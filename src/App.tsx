@@ -705,10 +705,10 @@ function ParamsBar(p: ParamsBarProps) {
       {p.kind === 'daterange' && (
         <div style={pb.row}>
           <Field label="From" width={140}>
-            <input style={pb.input} type="date" value={p.dateFrom} onChange={e => p.setDateFrom(e.target.value)} />
+            <input style={pb.input} type="date" onClick={e => (e.currentTarget as HTMLInputElement).showPicker?.()} value={p.dateFrom} onChange={e => p.setDateFrom(e.target.value)} />
           </Field>
           <Field label="To" width={140}>
-            <input style={pb.input} type="date" value={p.dateTo} onChange={e => p.setDateTo(e.target.value)} />
+            <input style={pb.input} type="date" onClick={e => (e.currentTarget as HTMLInputElement).showPicker?.()} value={p.dateTo} onChange={e => p.setDateTo(e.target.value)} />
           </Field>
           <button style={pb.apply} onClick={p.onApply}>Apply</button>
         </div>
@@ -716,7 +716,7 @@ function ParamsBar(p: ParamsBarProps) {
       {(p.kind === 'futureage' || p.kind === 'futureweight') && (
         <div style={pb.row}>
           <Field label="Future date" width={160}>
-            <input style={pb.input} type="date" value={p.fDate} onChange={e => p.setFDate(e.target.value)} />
+            <input style={pb.input} type="date" onClick={e => (e.currentTarget as HTMLInputElement).showPicker?.()} value={p.fDate} onChange={e => p.setFDate(e.target.value)} />
           </Field>
           <Field label={`Min ${p.label}`} width={100}>
             <input style={pb.input} type="number" min={0} value={p.fMin} onChange={e => p.setFMin(e.target.value)} placeholder="0" />
@@ -1095,7 +1095,7 @@ function AnimalEditPanel() {
               </div>
               <div style={ae.field}><AeLabel text="Birth Date" />
                 {isEdit
-                  ? <input style={ae.inp} type="date" value={fBirth} onChange={e => setFBirth(e.target.value)} />
+                  ? <input style={ae.inp} type="date" onClick={e => (e.currentTarget as HTMLInputElement).showPicker?.()} value={fBirth} onChange={e => setFBirth(e.target.value)} />
                   : <Txt v={fBirth} date />}
               </div>
               <div style={ae.field}><AeLabel text="Sex" />
@@ -1115,7 +1115,7 @@ function AnimalEditPanel() {
               {fStat === 'MORT' && (<>
                 <div style={ae.field}><AeLabel text="Death Date" />
                   {isEdit
-                    ? <input style={ae.inp} type="date" value={fDDat} onChange={e => setFDDat(e.target.value)} />
+                    ? <input style={ae.inp} type="date" onClick={e => (e.currentTarget as HTMLInputElement).showPicker?.()} value={fDDat} onChange={e => setFDDat(e.target.value)} />
                     : <Txt v={fDDat} date />}
                 </div>
                 <div style={ae.field}><AeLabel text="Death Reason" />
@@ -1125,7 +1125,7 @@ function AnimalEditPanel() {
               {fStat === 'VANDUT' && (<>
                 <div style={ae.field}><AeLabel text="Sale Date" />
                   {isEdit
-                    ? <input style={ae.inp} type="date" value={fSDat} onChange={e => setFSDat(e.target.value)} />
+                    ? <input style={ae.inp} type="date" onClick={e => (e.currentTarget as HTMLInputElement).showPicker?.()} value={fSDat} onChange={e => setFSDat(e.target.value)} />
                     : <Txt v={fSDat} date />}
                 </div>
                 <div style={ae.field}><AeLabel text="Client" />

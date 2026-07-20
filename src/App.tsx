@@ -982,15 +982,15 @@ function AnimalEditPanel() {
 
   const validate = (): string | null => {
     const tagRe = /^[A-Z]{2}\d{12}$/;
-    if (!fComp)  return 'Company is required';
-    if (!fSex)   return 'Sex is required';
-    if (!fBirth) return 'Birth date is required';
-    if (!fStat)  return 'Status is required';
-    if (fTag && !tagRe.test(fTag))  return `Ear tag invalid — expected 2 letters + 12 digits (e.g. DE1305739527)`;
-    if (fMom && !tagRe.test(fMom)) return `Mother ear tag invalid — expected 2 letters + 12 digits (e.g. DE1303650203)`;
-    if (fDad && !tagRe.test(fDad)) return `Father ear tag invalid — expected 2 letters + 12 digits`;
-    if (fStat === 'MORT'   && !fDDat) return 'Death date is required for status MORT';
-    if (fStat === 'VANDUT' && !fSDat) return 'Sale date is required for status VANDUT';
+    if (!fComp)  return 'Company: required';
+    if (!fSex)   return 'Sex: required';
+    if (!fBirth) return 'Birth Date: required';
+    if (!fStat)  return 'Status: required';
+    if (fTag && !tagRe.test(fTag))  return 'Ear Tag: must be 2 letters + 12 digits (e.g. DE1305739527)';
+    if (fMom && !tagRe.test(fMom)) return 'Mother Ear Tag: must be 2 letters + 12 digits (e.g. DE1303650203)';
+    if (fDad && !tagRe.test(fDad)) return 'Father Ear Tag: must be 2 letters + 12 digits';
+    if (fStat === 'MORT'   && !fDDat) return 'Death Date: required when status is MORT';
+    if (fStat === 'VANDUT' && !fSDat) return 'Sale Date: required when status is VANDUT';
     return null;
   };
 

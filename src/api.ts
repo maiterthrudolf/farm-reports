@@ -194,9 +194,16 @@ export const api = {
       const d = await r.json().catch(() => null);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const detail = (d as any)?.detail;
-      const msg = Array.isArray(detail)
-        ? (detail[0]?.msg ?? 'Validation error')
-        : (typeof detail === 'string' ? detail : `HTTP ${r.status}`);
+      let msg: string;
+      if (Array.isArray(detail) && detail.length > 0) {
+        const first = detail[0];
+        const loc: unknown[] = Array.isArray(first?.loc) ? first.loc : [];
+        const field = loc.length > 0 ? String(loc[loc.length - 1]) : '';
+        const errMsg: string = first?.msg ?? 'Validation error';
+        msg = field ? `${field}: ${errMsg}` : errMsg;
+      } else {
+        msg = typeof detail === 'string' ? detail : `HTTP ${r.status}`;
+      }
       throw new Error(msg);
     }
   },

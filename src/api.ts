@@ -193,7 +193,11 @@ export const api = {
     if (!r.ok) {
       const d = await r.json().catch(() => null);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      throw new Error((d as any)?.detail ?? `HTTP ${r.status}`);
+      const detail = (d as any)?.detail;
+      const msg = Array.isArray(detail)
+        ? (detail[0]?.msg ?? 'Validation error')
+        : (typeof detail === 'string' ? detail : `HTTP ${r.status}`);
+      throw new Error(msg);
     }
   },
 };

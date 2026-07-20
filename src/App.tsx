@@ -980,8 +980,24 @@ function AnimalEditPanel() {
     finally { setSearching(false); }
   };
 
+  const validate = (): string | null => {
+    const tagRe = /^[A-Z]{2}\d{12}$/;
+    if (!fComp)  return 'Company is required';
+    if (!fSex)   return 'Sex is required';
+    if (!fBirth) return 'Birth date is required';
+    if (!fStat)  return 'Status is required';
+    if (fTag && !tagRe.test(fTag))  return `Ear tag invalid — expected 2 letters + 12 digits (e.g. DE1305739527)`;
+    if (fMom && !tagRe.test(fMom)) return `Mother ear tag invalid — expected 2 letters + 12 digits (e.g. DE1303650203)`;
+    if (fDad && !tagRe.test(fDad)) return `Father ear tag invalid — expected 2 letters + 12 digits`;
+    if (fStat === 'MORT'   && !fDDat) return 'Death date is required for status MORT';
+    if (fStat === 'VANDUT' && !fSDat) return 'Sale date is required for status VANDUT';
+    return null;
+  };
+
   const doSave = async () => {
     if (!selTag) return;
+    const validErr = validate();
+    if (validErr) { setSaveMsg({ ok: false, text: validErr }); return; }
     setSaving(true);
     setSaveMsg(null);
     try {

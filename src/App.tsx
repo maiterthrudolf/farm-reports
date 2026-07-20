@@ -981,14 +981,14 @@ function AnimalEditPanel() {
   };
 
   const validate = (): string | null => {
-    const tagRe = /^[A-Z]{2}\d{12}$/;
+    const tagRe = /^[A-Z]{2}\d{10,12}$/;
     if (!fComp)  return 'Company: required';
     if (!fSex)   return 'Sex: required';
     if (!fBirth) return 'Birth Date: required';
     if (!fStat)  return 'Status: required';
-    if (fTag && !tagRe.test(fTag))  return 'Animal Ear Tag: must be 2 letters + 12 digits (e.g. DE1305739527)';
-    if (fMom && !tagRe.test(fMom)) return 'Mother Ear Tag: must be 2 letters + 12 digits (e.g. DE1303650203)';
-    if (fDad && !tagRe.test(fDad)) return 'Father Ear Tag: must be 2 letters + 12 digits';
+    if (fTag && !tagRe.test(fTag))  return 'Animal Ear Tag: must be 2 letters + 10–12 digits (e.g. DE1305739527)';
+    if (fMom && !tagRe.test(fMom)) return 'Mother Ear Tag: must be 2 letters + 10–12 digits (e.g. DE1303650203)';
+    if (fDad && !tagRe.test(fDad)) return 'Father Ear Tag: must be 2 letters + 10–12 digits';
     if (fStat === 'MORT'   && !fDDat) return 'Death Date: required when status is MORT';
     if (fStat === 'VANDUT' && !fSDat) return 'Sale Date: required when status is VANDUT';
     return null;

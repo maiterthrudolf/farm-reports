@@ -913,6 +913,7 @@ function AnimalEditPanel() {
   const [fStat,   setFStat]   = useState('');
   const [fBidaa,  setFBidaa]  = useState(false);
   const [fPed,    setFPed]    = useState(false);
+  const [fPedRaw, setFPedRaw] = useState<string | null>(null);
   const [fBreed,  setFBreed]  = useState(false);
   const [fGest,   setFGest]   = useState(false);
   const [fGestWk, setFGestWk] = useState('');
@@ -936,7 +937,9 @@ function AnimalEditPanel() {
     setFStat(str(a.status));
     setFBidaa(!!a.bidaa);
     const p = a.pedigree;
-    setFPed(p === true || ['yes', 'true', 'YES', 'TRUE', 'True'].includes(String(p)));
+    const pedStr = (p != null && p !== false && p !== '' && String(p).toLowerCase() !== 'false' && String(p).toLowerCase() !== 'no') ? String(p) : null;
+    setFPedRaw(pedStr);
+    setFPed(pedStr != null);
     setFBreed(!!a.breeding);
     setFGest(!!a.gestation);
     setFGestWk(a.gestation_weeks != null ? str(a.gestation_weeks) : '');
@@ -1017,7 +1020,7 @@ function AnimalEditPanel() {
       const body: Record<string, unknown> = {
         company: fComp, birth_date: fBirth || null, sex: fSex,
         color: fColor, purpose: fPurp || null, status: fStat,
-        bidaa: fBidaa, pedigree: fPed, breeding: fBreed,
+        bidaa: fBidaa, pedigree: fPed ? (fPedRaw ?? 'yes') : null, breeding: fBreed,
         gestation: fGest,
         gestation_weeks: fGest && fGestWk ? Number(fGestWk) : null,
         is_bull: fBull,

@@ -881,6 +881,13 @@ function AeFlag({ label, value, onChange }: { label: string; value: boolean; onC
   );
 }
 
+function Txt({ v, date: isDate }: { v: string; date?: boolean }) {
+  return <div style={ae.val}>{v ? (isDate ? formatDate(v) : v) : '—'}</div>;
+}
+function Inp({ v, set, type = 'text' }: { v: string; set: (x: string) => void; type?: string }) {
+  return <input style={ae.inp} type={type} value={v} onChange={e => set(e.target.value)} />;
+}
+
 function AnimalEditPanel() {
   const [last4,       setLast4]       = useState('');
   const [searching,   setSearching]   = useState(false);
@@ -1005,13 +1012,6 @@ function AnimalEditPanel() {
   };
 
   const isEdit = tab === 'edit';
-
-  const Txt = ({ v, date: isDate }: { v: string; date?: boolean }) => (
-    <div style={ae.val}>{v ? (isDate ? formatDate(v) : v) : '—'}</div>
-  );
-  const Inp = ({ v, set, type = 'text' }: { v: string; set: (x: string) => void; type?: string }) => (
-    <input style={ae.inp} type={type} value={v} onChange={e => set(e.target.value)} />
-  );
 
   return (
     <div style={ae.wrap}>

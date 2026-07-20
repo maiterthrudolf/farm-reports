@@ -77,6 +77,7 @@ export const api = {
   // Meta (available filter values)
   metaCompanies: () => fetch(`${BASE}/api/reports/meta/companies`).then(r => r.json()) as Promise<string[]>,
   metaGroups:    () => fetch(`${BASE}/api/reports/meta/groups`).then(r => r.json()) as Promise<string[]>,
+  metaClients:   () => fetch(`${BASE}/api/reports/meta/clients`).then(r => r.json()) as Promise<string[]>,
 
   // Pivot reports
   weights:           () => getPivot(`${BASE}/api/reports/weights`),

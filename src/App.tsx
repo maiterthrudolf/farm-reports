@@ -858,15 +858,26 @@ function AeChips({ options, value, onChange, labels }: {
   );
 }
 
-function AeToggle({ label, value, onChange }: {
-  label: string; value: boolean; onChange?: (v: boolean) => void;
-}) {
+function AeField({ label, children, style }: { label: string; children: React.ReactNode; style?: React.CSSProperties }) {
+  return <div style={style}><div style={ae.label}>{label}</div>{children}</div>;
+}
+
+function Val({ children, date }: { children?: React.ReactNode; date?: boolean }) {
+  const s = children == null || children === '' ? '—' : children;
+  return <div style={ae.val}>{date && typeof s === 'string' && s !== '—' ? formatDate(s) : s}</div>;
+}
+
+function AeFlag({ label, value, onChange }: { label: string; value: boolean; onChange?: (v: boolean) => void }) {
+  if (onChange) return (
+    <button style={value ? ae.toggleOn : ae.toggle} onClick={() => onChange(!value)}>
+      {label}: {value ? 'ON' : 'OFF'}
+    </button>
+  );
   return (
-    <button
-      style={value ? ae.toggleOn : ae.toggle}
-      onClick={onChange ? () => onChange(!value) : undefined}
-      disabled={!onChange}
-    >{label}: {value ? 'ON' : 'OFF'}</button>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, fontSize: 13 }}>
+      <span style={{ fontWeight: 700, color: value ? C.green : '#CBD5E1' }}>{value ? '✓' : '✗'}</span>
+      <span style={{ color: value ? '#111827' : '#9CA3AF', fontWeight: value ? 600 : 400 }}>{label}</span>
+    </span>
   );
 }
 
@@ -876,10 +887,14 @@ function AnimalEditPanel() {
   const [candidates,  setCandidates]  = useState<SimpleRow[] | null>(null);
   const [selTag,      setSelTag]      = useState<string | null>(null);
   const [animal,      setAnimal]      = useState<Record<string, unknown> | null>(null);
+  const [snapshot,    setSnapshot]    = useState<Record<string, unknown> | null>(null);
   const [loadingAnim, setLoadingAnim] = useState(false);
   const [tab,         setTab]         = useState<'view' | 'edit'>('view');
   const [saving,      setSaving]      = useState(false);
   const [saveMsg,     setSaveMsg]     = useState<{ ok: boolean; text: string } | null>(null);
+  const [clientOpts,  setClientOpts]  = useState<string[]>([]);
+
+  React.useEffect(() => { api.metaClients().then(setClientOpts).catch(() => {}); }, []);
 
   // Edit fields
   const [fTag,    setFTag]    = useState('');
@@ -935,7 +950,7 @@ function AnimalEditPanel() {
     setAnimal(null);
     setSaveMsg(null);
     api.animalByTag(tag)
-      .then(a => { setAnimal(a); fill(a); setTab('view'); })
+      .then(a => { setAnimal(a); setSnapshot(a); fill(a); setTab('view'); })
       .catch(() => {})
       .finally(() => setLoadingAnim(false));
   };
@@ -1001,60 +1016,69 @@ function AnimalEditPanel() {
   return (
     <div style={ae.wrap}>
 
-      {/* ── Search bar ── */}
-      <div style={ae.searchRow}>
-        <span style={ae.searchLabel}>Last 4 digits:</span>
-        <input
-          style={ae.searchInp}
-          value={last4}
-          onChange={e => { if (/^\d{0,4}$/.test(e.target.value)) setLast4(e.target.value); }}
-          onKeyDown={e => e.key === 'Enter' && doSearch()}
-          maxLength={4}
-          placeholder="_ _ _ _"
-          autoFocus
-        />
-        <button style={ae.searchBtn} onClick={doSearch} disabled={last4.length !== 4 || searching}>
-          {searching ? '…' : 'Search'}
-        </button>
-        {saveMsg && (
-          <span style={{ marginLeft: 14, fontSize: 13, fontWeight: 700, color: saveMsg.ok ? C.green : '#C62828' }}>
-            {saveMsg.text}
-          </span>
-        )}
-      </div>
-
-      {/* ── Candidate list ── */}
-      {candidates !== null && (
-        <div style={{ flexShrink: 0 }}>
-          {candidates.length === 0
-            ? <div style={{ color: '#9CA3AF', fontSize: 13 }}>No animal found.</div>
-            : <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const, alignItems: 'center' }}>
-                <span style={{ fontSize: 12, color: '#6B7280' }}>Multiple results — select:</span>
-                {candidates.map(c => (
-                  <button key={str(c.ear_tag)} style={ae.candBtn}
-                    onClick={() => { setCandidates(null); loadAnimal(str(c.ear_tag)); }}>
-                    {str(c.ear_tag)} · {str(c.status)} · {str(c.company)}
-                  </button>
-                ))}
-              </div>
-          }
+      {/* ── No animal: centered search ── */}
+      {!animal && !loadingAnim && (
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', justifyContent: 'center', gap: 20 }}>
+          <div style={{ fontSize: 22, fontWeight: 700, color: '#1A2B4A' }}>Search for an animal</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <input
+              style={ae.searchInp}
+              value={last4}
+              onChange={e => { if (/^\d{0,4}$/.test(e.target.value)) setLast4(e.target.value); }}
+              onKeyDown={e => e.key === 'Enter' && doSearch()}
+              maxLength={4}
+              autoFocus
+            />
+            <button style={ae.searchBtn} onClick={doSearch} disabled={last4.length !== 4 || searching}>
+              {searching ? '…' : 'Search'}
+            </button>
+          </div>
+          {candidates !== null && (
+            candidates.length === 0
+              ? <div style={{ color: '#9CA3AF', fontSize: 13 }}>No animal found.</div>
+              : <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8, alignItems: 'center' }}>
+                  <span style={{ fontSize: 12, color: '#6B7280' }}>Multiple results — select one:</span>
+                  {candidates.map(c => (
+                    <button key={str(c.ear_tag)} style={{ ...ae.candBtn, width: 340, textAlign: 'center' as const }}
+                      onClick={() => { setCandidates(null); loadAnimal(str(c.ear_tag)); }}>
+                      {str(c.ear_tag)} · {str(c.status)} · {str(c.company)}
+                    </button>
+                  ))}
+                </div>
+          )}
         </div>
       )}
 
-      {loadingAnim && <div style={{ color: '#9CA3AF', fontSize: 13, flexShrink: 0 }}>Loading…</div>}
+      {loadingAnim && (
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9CA3AF', fontSize: 14 }}>
+          Loading…
+        </div>
+      )}
 
       {animal && (
         <>
-          {/* ── Tab + Save row ── */}
-          <div style={ae.tabRow}>
+          {/* ── Top bar: ← Search | [View][Edit] | 💾 Save  ↺ Discard | saveMsg ── */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            <button style={ae.backBtn} onClick={() => { setAnimal(null); setSelTag(null); setCandidates(null); setSaveMsg(null); setLast4(''); }}>
+              ← Search
+            </button>
+            <div style={{ width: 1, background: '#E5E7EB', alignSelf: 'stretch', margin: '0 4px' }} />
             <button style={!isEdit ? ae.tabOn : ae.tabOff} onClick={() => setTab('view')}>View</button>
             <button style={isEdit  ? ae.tabOn : ae.tabOff} onClick={() => setTab('edit')}>Edit</button>
-            {isEdit && (
+            {isEdit && <>
               <button style={ae.saveBtn} onClick={doSave} disabled={saving}>
                 {saving ? 'Saving…' : '💾 Save'}
               </button>
+              <button style={ae.discardBtn} onClick={() => { if (snapshot) fill(snapshot); }}>
+                ↺ Discard
+              </button>
+            </>}
+            {saveMsg && (
+              <span style={{ marginLeft: 6, fontSize: 13, fontWeight: 700, color: saveMsg.ok ? C.green : '#C62828' }}>
+                {saveMsg.text}
+              </span>
             )}
-            <span style={{ marginLeft: 'auto', fontSize: 12, color: '#9CA3AF', fontFamily: 'monospace' }}>
+            <span style={{ marginLeft: 'auto', fontSize: 11, color: '#9CA3AF', fontFamily: 'monospace' }}>
               {selTag}
             </span>
           </div>
@@ -1106,7 +1130,13 @@ function AnimalEditPanel() {
                     : <Txt v={fSDat} date />}
                 </div>
                 <div style={ae.field}><AeLabel text="Client" />
-                  {isEdit ? <Inp v={fCli} set={setFCli} /> : <Txt v={fCli} />}
+                  {isEdit
+                    ? <select style={ae.sel} value={fCli} onChange={e => setFCli(e.target.value)}>
+                        <option value="">— Select client —</option>
+                        {clientOpts.map(c => <option key={c} value={c}>{c}</option>)}
+                        {fCli && !clientOpts.includes(fCli) && <option value={fCli}>{fCli}</option>}
+                      </select>
+                    : <Txt v={fCli} />}
                 </div>
               </>)}
             </div>
@@ -1131,11 +1161,11 @@ function AnimalEditPanel() {
               <div style={{ borderTop: '1px solid #E5E7EB', paddingTop: 10, marginTop: 4 }}>
                 <div style={{ fontSize: 10, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase' as const, letterSpacing: 0.8, marginBottom: 7 }}>Flags</div>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const }}>
-                  <AeToggle label="Bidaa"    value={fBidaa} onChange={isEdit ? setFBidaa : undefined} />
-                  <AeToggle label="Pedigree" value={fPed}   onChange={isEdit ? setFPed   : undefined} />
-                  {fSex !== 'M' && <AeToggle label="Breeding" value={fBreed} onChange={isEdit ? setFBreed : undefined} />}
-                  {fSex !== 'M' && <AeToggle label="Pregnant" value={fGest}  onChange={isEdit ? setFGest  : undefined} />}
-                  {fSex !== 'F' && <AeToggle label="Bull"     value={fBull}  onChange={isEdit ? setFBull  : undefined} />}
+                  <AeFlag label="Bidaa"    value={fBidaa} onChange={isEdit ? setFBidaa : undefined} />
+                  <AeFlag label="Pedigree" value={fPed}   onChange={isEdit ? setFPed   : undefined} />
+                  {fSex !== 'M' && <AeFlag label="Breeding" value={fBreed} onChange={isEdit ? setFBreed : undefined} />}
+                  {fSex !== 'M' && <AeFlag label="Pregnant" value={fGest}  onChange={isEdit ? setFGest  : undefined} />}
+                  {fSex !== 'F' && <AeFlag label="Bull"     value={fBull}  onChange={isEdit ? setFBull  : undefined} />}
                 </div>
                 {fGest && (
                   <div style={{ ...ae.field, marginTop: 8 }}><AeLabel text="Gestation weeks" />
@@ -1490,6 +1520,8 @@ const ae = {
   tabOn:      { height: 30, border: '1px solid ' + C.blue, borderRadius: 6, padding: '0 18px', fontSize: 13, cursor: 'pointer', background: C.blue, color: '#FFF', fontFamily: 'inherit', fontWeight: '700' as const } as React.CSSProperties,
   tabOff:     { height: 30, border: '1px solid #D1D5DB', borderRadius: 6, padding: '0 18px', fontSize: 13, cursor: 'pointer', background: '#FFF', color: '#374151', fontFamily: 'inherit', fontWeight: '600' as const } as React.CSSProperties,
   saveBtn:    { height: 30, background: C.green, border: 'none', borderRadius: 6, color: '#FFF', fontSize: 13, fontWeight: '700' as const, padding: '0 20px', cursor: 'pointer' } as React.CSSProperties,
+  discardBtn: { height: 30, background: '#FFF', border: '1px solid #D1D5DB', borderRadius: 6, color: '#374151', fontSize: 13, fontWeight: '600' as const, padding: '0 16px', cursor: 'pointer' } as React.CSSProperties,
+  backBtn:    { height: 30, background: '#FFF', border: '1px solid #D1D5DB', borderRadius: 6, color: '#374151', fontSize: 13, fontWeight: '600' as const, padding: '0 14px', cursor: 'pointer' } as React.CSSProperties,
   grid:       { flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', overflow: 'hidden', minHeight: 0 } as React.CSSProperties,
   col:        { display: 'flex', flexDirection: 'column' as const, overflow: 'hidden', paddingRight: 20 },
   field:      { marginBottom: 7 } as React.CSSProperties,

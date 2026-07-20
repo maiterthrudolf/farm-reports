@@ -980,15 +980,28 @@ function AnimalEditPanel() {
     finally { setSearching(false); }
   };
 
+  const validateTag = (tag: string): string | null => {
+    const m = tag.match(/^([A-Z]{2})(\d+)$/);
+    if (!m) return 'must start with 2 letters followed by digits only';
+    const [, country, digits] = m;
+    if (country === 'DE' && digits.length !== 10) return `DE tags need exactly 10 digits (got ${digits.length})`;
+    if (country === 'RO' && digits.length !== 12) return `RO tags need exactly 12 digits (got ${digits.length})`;
+    if (country !== 'DE' && country !== 'RO' && (digits.length < 10 || digits.length > 12))
+      return 'must have 10–12 digits after the country code';
+    return null;
+  };
+
   const validate = (): string | null => {
-    const tagRe = /^[A-Z]{2}\d{10,12}$/;
     if (!fComp)  return 'Company: required';
     if (!fSex)   return 'Sex: required';
     if (!fBirth) return 'Birth Date: required';
     if (!fStat)  return 'Status: required';
-    if (fTag && !tagRe.test(fTag))  return 'Animal Ear Tag: must be 2 letters + 10–12 digits (e.g. DE1305739527)';
-    if (fMom && !tagRe.test(fMom)) return 'Mother Ear Tag: must be 2 letters + 10–12 digits (e.g. DE1303650203)';
-    if (fDad && !tagRe.test(fDad)) return 'Father Ear Tag: must be 2 letters + 10–12 digits';
+    const tagErr = fTag ? validateTag(fTag) : null;
+    if (tagErr) return `Animal Ear Tag: ${tagErr}`;
+    const momErr = fMom ? validateTag(fMom) : null;
+    if (momErr) return `Mother Ear Tag: ${momErr}`;
+    const dadErr = fDad ? validateTag(fDad) : null;
+    if (dadErr) return `Father Ear Tag: ${dadErr}`;
     if (fStat === 'MORT'   && !fDDat) return 'Death Date: required when status is MORT';
     if (fStat === 'VANDUT' && !fSDat) return 'Sale Date: required when status is VANDUT';
     return null;

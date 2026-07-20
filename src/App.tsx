@@ -1083,11 +1083,10 @@ function AnimalEditPanel() {
             </span>
           </div>
 
-          {/* ── Two-column form ── */}
-          <div style={ae.grid}>
+          {/* ── Single centered column ── */}
+          <div style={{ flex: 1, overflowY: 'auto' as const, display: 'flex', flexDirection: 'column' as const, alignItems: 'center', padding: '12px 0 20px' }}>
+            <div style={{ width: 480, display: 'flex', flexDirection: 'column' as const, gap: 0 }}>
 
-            {/* LEFT */}
-            <div style={ae.col}>
               <div style={ae.field}><AeLabel text="Ear Tag" />
                 {isEdit ? <Inp v={fTag} set={setFTag} /> : <Txt v={fTag} />}
               </div>
@@ -1139,10 +1138,9 @@ function AnimalEditPanel() {
                     : <Txt v={fCli} />}
                 </div>
               </>)}
-            </div>
 
-            {/* RIGHT */}
-            <div style={{ ...ae.col, borderLeft: '1px solid #E5E7EB', paddingLeft: 20 }}>
+              <div style={{ borderTop: '1px solid #E5E7EB', margin: '10px 0 10px' }} />
+
               <div style={ae.field}><AeLabel text="Group" />
                 {isEdit
                   ? <select style={ae.sel} value={fGrp} onChange={e => setFGrp(e.target.value)}>
@@ -1158,7 +1156,9 @@ function AnimalEditPanel() {
                 {isEdit ? <Inp v={fDad} set={setFDad} /> : <Txt v={fDad} />}
               </div>
 
-              <div style={{ borderTop: '1px solid #E5E7EB', paddingTop: 10, marginTop: 4 }}>
+              <div style={{ borderTop: '1px solid #E5E7EB', margin: '10px 0 10px' }} />
+
+              <div style={ae.field}>
                 <div style={{ fontSize: 10, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase' as const, letterSpacing: 0.8, marginBottom: 7 }}>Flags</div>
                 <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const }}>
                   <AeFlag label="Bidaa"    value={fBidaa} onChange={isEdit ? setFBidaa : undefined} />
@@ -1167,28 +1167,30 @@ function AnimalEditPanel() {
                   {fSex !== 'M' && <AeFlag label="Pregnant" value={fGest}  onChange={isEdit ? setFGest  : undefined} />}
                   {fSex !== 'F' && <AeFlag label="Bull"     value={fBull}  onChange={isEdit ? setFBull  : undefined} />}
                 </div>
-                {fGest && (
-                  <div style={{ ...ae.field, marginTop: 8 }}><AeLabel text="Gestation weeks" />
-                    {isEdit ? <Inp v={fGestWk} set={setFGestWk} type="number" /> : <Txt v={fGestWk} />}
-                  </div>
-                )}
               </div>
+              {fGest && (
+                <div style={ae.field}><AeLabel text="Gestation weeks" />
+                  {isEdit ? <Inp v={fGestWk} set={setFGestWk} type="number" /> : <Txt v={fGestWk} />}
+                </div>
+              )}
 
-              <div style={{ flex: 1, display: 'flex', flexDirection: 'column' as const, marginTop: 10, minHeight: 0 }}>
-                <AeLabel text="Comment" />
+              <div style={{ borderTop: '1px solid #E5E7EB', margin: '10px 0 10px' }} />
+
+              <div style={ae.field}><AeLabel text="Comment" />
                 {isEdit
                   ? <textarea
-                      style={{ ...ae.inp, flex: 1, resize: 'none' as const, fontFamily: 'inherit', minHeight: 72, paddingTop: 6 }}
+                      rows={6}
+                      style={{ ...ae.inp, height: 'auto', resize: 'none' as const, fontFamily: 'inherit', paddingTop: 6 }}
                       value={fCmt}
                       onChange={e => setFCmt(e.target.value)}
                     />
-                  : <div style={{ ...ae.val, flex: 1, whiteSpace: 'pre-wrap' as const, wordBreak: 'break-word' as const, overflowY: 'auto' as const }}>
+                  : <div style={{ ...ae.val, whiteSpace: 'pre-wrap' as const, wordBreak: 'break-word' as const }}>
                       {fCmt || '—'}
                     </div>
                 }
               </div>
-            </div>
 
+            </div>
           </div>
         </>
       )}

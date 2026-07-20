@@ -1,4 +1,4 @@
-const BASE = import.meta.env.VITE_API_BASE ?? 'http://localhost:8000';
+const BASE = import.meta.env.VITE_API_BASE ?? 'http://localhost:8080';
 
 async function getList(url: string): Promise<Record<string, unknown>[]> {
   const res = await fetch(url);
@@ -37,6 +37,10 @@ export type PivotResult = { columns: string[]; rows: SimpleRow[] };
 
 export const api = {
   allAnimals:        () => getList(`${BASE}/api/reports/animals`),
+  births:            () => getList(`${BASE}/api/reports/births`),
+  closeBirths:       () => getList(`${BASE}/api/reports/births/close`),
+  aiPrepared:        () => getList(`${BASE}/api/reports/ai/prepared`),
+  aiInseminations:   () => getList(`${BASE}/api/reports/ai/inseminations`),
   currentPregnant:   () => getList(`${BASE}/api/reports/pregnancy/current`),
   medicalSimple:     () => getList(`${BASE}/api/reports/medical/simple`),
   lostPregnancy:     () => getList(`${BASE}/api/reports/pregnancy/lost`),
@@ -80,4 +84,115 @@ export const api = {
   medicalGroup:      () => getPivot(`${BASE}/api/reports/medical/group`),
   medicalIndividual: () => getPivot(`${BASE}/api/reports/medical/individual`),
   aiHistory:         () => getPivot(`${BASE}/api/reports/ai`),
+
+  // Feed – Bales
+  baleProduction: () => getList(`${BASE}/api/reports/bales/production`).then(rows =>
+    rows.map(r => ({
+      bale_type:       r.bale_type,
+      area:            r.area,
+      year:            r.year,
+      production_date: r.production_date,
+      count:           r.count,
+      bale_weight_kg:  r.weight_kg != null ? Math.round(Number(r.weight_kg)) : null,
+      total_t:         r.total_kg  != null ? (Number(r.total_kg) / 1000).toFixed(2) : null,
+      created_time:    r.created_time,
+    }))
+  ),
+  baleFarmEntry: () => getList(`${BASE}/api/reports/bales/farm-entry`).then(rows =>
+    rows.map(r => ({
+      bale_type:      r.bale_type,
+      year:           r.year,
+      entry_date:     r.entry_date,
+      count:          r.count,
+      bale_weight_kg: r.weight_kg != null ? Math.round(Number(r.weight_kg)) : null,
+      total_t:        r.total_kg  != null ? (Number(r.total_kg) / 1000).toFixed(2) : null,
+      created_time:   r.created_time,
+    }))
+  ),
+  balePurchase: () => getList(`${BASE}/api/reports/bales/purchase`).then(rows =>
+    rows.map(r => ({
+      bale_type:      r.bale_type,
+      year:           r.year,
+      purchase_date:  r.purchase_date,
+      count:          r.count,
+      bale_weight_kg: r.weight_kg != null ? Math.round(Number(r.weight_kg)) : null,
+      total_t:        r.total_kg  != null ? (Number(r.total_kg) / 1000).toFixed(2) : null,
+      created_time:   r.created_time,
+    }))
+  ),
+  baleConsumption: () => getList(`${BASE}/api/reports/bales/consumption`).then(rows =>
+    rows.map(r => ({
+      bale_type:      r.bale_type,
+      location:       r.location,
+      year:           r.year,
+      entry_date:     r.entry_date,
+      count:          r.count,
+      bale_weight_kg: r.weight_kg != null ? Math.round(Number(r.weight_kg)) : null,
+      total_t:        r.total_kg  != null ? (Number(r.total_kg) / 1000).toFixed(2) : null,
+      created_time:   r.created_time,
+    }))
+  ),
+
+  // Feed – Cereals
+  cerealProduction: () => getList(`${BASE}/api/reports/cereals/production`).then(rows =>
+    rows.map(r => ({
+      cereal_type:     r.cereal_type,
+      area:            r.area,
+      year:            r.year,
+      production_date: r.production_date,
+      harvest_t:       r.harvest_kg != null ? (Number(r.harvest_kg) / 1000).toFixed(2) : null,
+      created_time:    r.created_time,
+    }))
+  ),
+  cerealPurchase: () => getList(`${BASE}/api/reports/cereals/purchase`).then(rows =>
+    rows.map(r => ({
+      cereal_type:   r.cereal_type,
+      supplier:      r.supplier,
+      year:          r.year,
+      purchase_date: r.purchase_date,
+      purchase_t:    r.purchase_kg != null ? (Number(r.purchase_kg) / 1000).toFixed(2) : null,
+      created_time:  r.created_time,
+    }))
+  ),
+  cerealConsumption: () => getList(`${BASE}/api/reports/cereals/consumption`).then(rows =>
+    rows.map(r => ({
+      cereal_type:      r.cereal_type,
+      year:             r.year,
+      consumption_date: r.consumption_date,
+      consumption_t:    r.consumption_kg != null ? (Number(r.consumption_kg) / 1000).toFixed(2) : null,
+      created_time:     r.created_time,
+    }))
+  ),
+  cerealSale: () => getList(`${BASE}/api/reports/cereals/sale`).then(rows =>
+    rows.map(r => ({
+      cereal_type:  r.cereal_type,
+      client:       r.client,
+      year:         r.year,
+      sale_date:    r.sale_date,
+      sale_t:       r.sale_kg != null ? (Number(r.sale_kg) / 1000).toFixed(2) : null,
+      created_time: r.created_time,
+    }))
+  ),
+
+  animalSearch: (last4: string) =>
+    getList(`${BASE}/api/cattle/search?last4=${last4}`),
+
+  animalByTag: async (earTag: string): Promise<Record<string, unknown>> => {
+    const r = await fetch(`${BASE}/api/cattle/by-tag/${encodeURIComponent(earTag)}`);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return r.json();
+  },
+
+  animalUpdate: async (earTag: string, body: Record<string, unknown>): Promise<void> => {
+    const r = await fetch(`${BASE}/api/edit/${encodeURIComponent(earTag)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    });
+    if (!r.ok) {
+      const d = await r.json().catch(() => null);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      throw new Error((d as any)?.detail ?? `HTTP ${r.status}`);
+    }
+  },
 };

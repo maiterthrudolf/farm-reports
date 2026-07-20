@@ -5,7 +5,7 @@ import { api, SimpleRow, PivotResult } from './api';
 
 // ─── Report catalogue ──────────────────────────────────────────────────────────
 
-type ReportKind = 'simple' | 'pivot' | 'daterange' | 'futureage' | 'futureweight' | 'custom';
+type ReportKind = 'simple' | 'pivot' | 'daterange' | 'futureage' | 'futureweight' | 'custom' | 'animaledit';
 
 interface ReportDef {
   id: string;
@@ -15,10 +15,14 @@ interface ReportDef {
   kind: ReportKind;
   group: string;
   load?: () => Promise<SimpleRow[] | PivotResult>;
+  filterCols?: string[];
+  totalCols?: string[];
+  defaultHidden?: string[];
 }
 
 const REPORTS: ReportDef[] = [
   // Custom (top)
+  { id: 'animal_edit', icon: '✏️', title: 'View / Edit Animal', desc: 'Search by last 4 digits, view or edit all animal details', kind: 'animaledit', group: 'Custom' },
   { id: 'custom',            icon: '🔧', title: 'Custom Filter',         desc: 'Combine any filters for a tailored report',               kind: 'custom',  group: 'Custom' },
   // Herd
   { id: 'all_animals',       icon: '🐄', title: 'All Animals',          desc: 'Complete list incl. dead & sold, last weight & pregnancy', kind: 'simple',  group: 'Herd',     load: () => api.allAnimals() },
@@ -44,14 +48,29 @@ const REPORTS: ReportDef[] = [
   { id: 'weights',           icon: '⚖️', title: 'Weighing History',     desc: 'All weighings per animal, last 3 years',                  kind: 'pivot',   group: 'Weights',  load: () => api.weights() },
   { id: 'ai_history',        icon: '🧬', title: 'AI History',           desc: 'Artificial insemination records, last 3 years',            kind: 'pivot',   group: 'AI',       load: () => api.aiHistory() },
   // Parameterised
+  { id: 'births',            icon: '🐣', title: 'Births – Chronological', desc: 'All births newest first — ear tag, sex, parents, weight',  kind: 'simple',  group: 'Events', load: () => api.births() },
+  { id: 'close_births',      icon: '⚠️', title: 'Close Births < 9 m',    desc: 'Cows with two births less than 9 months apart',            kind: 'simple',  group: 'Events', load: () => api.closeBirths() },
+  { id: 'ai_prepared',       icon: '💉', title: 'AI – Prepared',          desc: 'Cows prepared for insemination – disappear after 3 weeks or when inseminated', kind: 'simple', group: 'Events', load: () => api.aiPrepared() },
+  { id: 'ai_inseminations',  icon: '🧬', title: 'AI – Inseminations',     desc: 'All artificial inseminations – cow, bull name & code, date', kind: 'simple', group: 'Events', load: () => api.aiInseminations() },
   { id: 'calving',           icon: '🐄', title: 'Calvings in Period',   desc: 'Births within a chosen date range',                        kind: 'daterange',group: 'Events' },
   { id: 'not_calving',       icon: '⏳', title: 'Expected but No Birth',desc: 'Expected calvings that didn\'t happen',                    kind: 'daterange',group: 'Events' },
   { id: 'dead',              icon: '💀', title: 'Deaths in Period',      desc: 'Deaths within a chosen date range',                        kind: 'daterange',group: 'Events' },
   { id: 'future_age',        icon: '📅', title: 'Age on Future Date',    desc: 'Animals in an age window on a future date',               kind: 'futureage',group: 'Events' },
   { id: 'future_weight',     icon: '📈', title: 'Weight on Future Date', desc: 'Animals in a weight window on a future date',             kind: 'futureweight',group: 'Events' },
+  // Bales
+  { id: 'bale_production',   icon: '🌾', title: 'Bales Production',      desc: 'All bale production incl. area, date, weight, count',      kind: 'simple', group: 'Bales',  load: () => api.baleProduction(), filterCols: ['bale_type', 'area', 'year'], totalCols: ['count', 'total_t'], defaultHidden: ['created_time'] },
+  { id: 'bale_farm_entry',   icon: '🚜', title: 'Bales Farm Entry',       desc: 'Bales moved from field to farm (not purchased)',           kind: 'simple', group: 'Bales',  load: () => api.baleFarmEntry(),   filterCols: ['bale_type', 'year'],             totalCols: ['count', 'total_t'], defaultHidden: ['created_time'] },
+  { id: 'bale_purchase',     icon: '🛒', title: 'Bales Purchase',          desc: 'Purchased bales entered into farm stock',                 kind: 'simple', group: 'Bales',  load: () => api.balePurchase(),    filterCols: ['bale_type', 'year'],             totalCols: ['count', 'total_t'], defaultHidden: ['created_time'] },
+  { id: 'bale_consumption',  icon: '📦', title: 'Bales Consumption',      desc: 'All bale consumption — field or farm, weight & tonnage',   kind: 'simple', group: 'Bales',  load: () => api.baleConsumption(), filterCols: ['bale_type', 'location', 'year'], totalCols: ['count', 'total_t'], defaultHidden: ['created_time'] },
+  // Grains
+  { id: 'cereal_production', icon: '🌽', title: 'Grains Production',  desc: 'Own cereal harvest only',                               kind: 'simple', group: 'Grains', load: () => api.cerealProduction(),  filterCols: ['cereal_type', 'year'],           totalCols: ['harvest_t'],     defaultHidden: ['created_time'] },
+  { id: 'cereal_purchase',   icon: '🛒', title: 'Grains Purchase',    desc: 'Purchased cereals (Shrot de soia, Shrot de floare, …)', kind: 'simple', group: 'Grains', load: () => api.cerealPurchase(),    filterCols: ['cereal_type', 'supplier', 'year'], totalCols: ['purchase_t'], defaultHidden: ['created_time'] },
+  { id: 'cereal_consumption',icon: '🍽️', title: 'Grains Consumption', desc: 'All cereal consumption entries',                        kind: 'simple', group: 'Grains', load: () => api.cerealConsumption(), filterCols: ['cereal_type', 'year'],           totalCols: ['consumption_t'], defaultHidden: ['created_time'] },
+  { id: 'cereal_sale',       icon: '💰', title: 'Grains Sale',        desc: 'All cereal sales — type, quantity, client, date',       kind: 'simple', group: 'Grains', load: () => api.cerealSale(),        filterCols: ['cereal_type', 'client', 'year'], totalCols: ['sale_t'],        defaultHidden: ['created_time'] },
 ];
 
-const GROUPS = ['Custom', 'Herd', 'Pregnancy', 'Medical', 'Weights', 'AI', 'Events'];
+const ANIMAL_GROUPS = ['Custom', 'Herd', 'Pregnancy', 'Medical', 'Weights', 'AI', 'Events'];
+const FEED_GROUPS   = ['Bales', 'Grains'];
 
 // ─── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -77,6 +96,15 @@ function normBool(s: string): string | null {
   if (u === 'YES' || u === 'DA' || u === 'TRUE') return 'DA';
   if (u === 'NO'  || u === 'NU' || u === 'FALSE') return 'NU';
   return null;
+}
+
+const str = (v: unknown): string => (v == null ? '' : String(v));
+
+function normColorIn(s: string): string {
+  const u = s.toUpperCase();
+  if (['BLACK', 'B', 'N', 'NEGRU'].includes(u)) return 'BLACK';
+  if (['RED', 'R', 'ROSU'].includes(u)) return 'RED';
+  return s;
 }
 
 function normColor(s: string): string | null {
@@ -344,8 +372,8 @@ function loadColConfigs(): Record<string, ColConfig> {
   catch { return {}; }
 }
 
-function applyColConfig(cols: string[], cfg: ColConfig | undefined): string[] {
-  if (!cfg) return cols;
+function applyColConfig(cols: string[], cfg: ColConfig | undefined, defaultHidden: string[] = []): string[] {
+  if (!cfg) return cols.filter(c => !defaultHidden.includes(c));
   const ordered = cfg.order.filter(c => cols.includes(c));
   const newCols  = cols.filter(c => !cfg.order.includes(c));
   return [...ordered, ...newCols].filter(c => !cfg.hidden.includes(c));
@@ -411,6 +439,7 @@ function PasswordGate({ children }: { children: React.ReactNode }) {
 // ─── App ──────────────────────────────────────────────────────────────────────
 
 function AppInner() {
+  const [mode, setMode]       = useState<'animals' | 'feed'>('animals');
   const [activeId, setActiveId] = useState<string | null>(null);
   const [columns, setColumns] = useState<string[]>([]);
   const [rows, setRows]       = useState<SimpleRow[]>([]);
@@ -429,7 +458,7 @@ function AppInner() {
   const [configOpen, setConfigOpen] = useState(false);
 
   const activeDef = REPORTS.find(r => r.id === activeId);
-  const displayColumns = applyColConfig(columns, activeId ? colConfigs[activeId] : undefined);
+  const displayColumns = applyColConfig(columns, activeId ? colConfigs[activeId] : undefined, activeDef?.defaultHidden ?? []);
 
   const saveColConfig = (reportId: string, cfg: ColConfig) => {
     const next = { ...colConfigs, [reportId]: cfg };
@@ -442,6 +471,7 @@ function AppInner() {
 
   const runReport = useCallback(async () => {
     if (!activeDef) return;
+    if (activeDef.kind === 'animaledit') return;
     setLoading(true);
     setError(null);
     try {
@@ -498,10 +528,12 @@ function AppInner() {
 
   return (
     <div style={layout.root}>
-      <Sidebar activeId={activeId} onSelect={selectReport} />
+      <Sidebar activeId={activeId} onSelect={selectReport} mode={mode} onModeChange={m => { setMode(m); setActiveId(null); setColumns([]); setRows([]); setError(null); setParamsReady(false); }} />
       <div style={layout.main}>
         {!activeDef ? (
           <Welcome />
+        ) : activeDef.kind === 'animaledit' ? (
+          <AnimalEditPanel />
         ) : (
           <>
             <Header
@@ -539,7 +571,13 @@ function AppInner() {
                 <Empty msg="No data found" />
               )}
               {!loading && !error && columns.length > 0 && (
-                <DataTable columns={displayColumns} rows={rows} />
+                <DataTable
+                  key={activeId}
+                  columns={displayColumns}
+                  rows={rows}
+                  filterCols={activeDef?.filterCols}
+                  totalCols={activeDef?.totalCols}
+                />
               )}
             </div>
           </>
@@ -560,15 +598,35 @@ function AppInner() {
 
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
 
-function Sidebar({ activeId, onSelect }: { activeId: string | null; onSelect: (id: string) => void }) {
+function Sidebar({ activeId, onSelect, mode, onModeChange }: {
+  activeId: string | null;
+  onSelect: (id: string) => void;
+  mode: 'animals' | 'feed';
+  onModeChange: (m: 'animals' | 'feed') => void;
+}) {
+  const groups = mode === 'animals' ? ANIMAL_GROUPS : FEED_GROUPS;
   return (
     <div style={sb.wrap}>
-      <div style={sb.brand}>
-        <span style={sb.brandIcon}>🐄</span>
-        <span style={sb.brandText}>Farm Reports</span>
+      {/* Mode switcher */}
+      <div style={sb.tabs}>
+        <button
+          style={{ ...sb.tab, ...(mode === 'animals' ? sb.tabActive : {}) }}
+          onClick={() => onModeChange('animals')}
+          title="Animal Reports"
+        >
+          🐄
+        </button>
+        <button
+          style={{ ...sb.tab, ...(mode === 'feed' ? sb.tabActive : {}) }}
+          onClick={() => onModeChange('feed')}
+          title="Feed Reports"
+        >
+          🌾
+        </button>
+        <span style={sb.brandText}>{mode === 'animals' ? 'Animals' : 'Feed'}</span>
       </div>
       <div style={sb.scroll}>
-        {GROUPS.map(g => {
+        {groups.map(g => {
           const items = REPORTS.filter(r => r.group === g);
           return (
             <div key={g}>
@@ -576,10 +634,7 @@ function Sidebar({ activeId, onSelect }: { activeId: string | null; onSelect: (i
               {items.map(r => (
                 <button
                   key={r.id}
-                  style={{
-                    ...sb.item,
-                    ...(activeId === r.id ? sb.itemActive : {}),
-                  }}
+                  style={{ ...sb.item, ...(activeId === r.id ? sb.itemActive : {}) }}
                   onClick={() => onSelect(r.id)}
                 >
                   <span style={sb.itemIcon}>{r.icon}</span>
@@ -701,7 +756,7 @@ function CustomFilterBar({ custom, setCustom, onApply }: {
     'Parcela 4 - Ferma', 'Parcela 5 - Ferma', 'Parcela 6 - Ferma',
     'Grupa 1 - Negestante', 'Grupa 2 - Gestatie mica', 'Grupa 3 - Gestatie mare',
     'Grupa 4 - Juninci',
-    'Vitei', 'Vitele', 'Intarcati', 'Reforme', 'Generala',
+    'Vitei Ingrasare', 'Vitele', 'Intarcati', 'Reforme', 'Insamintate', 'Generala',
   ];
 
   const [companyOpts, setCompanyOpts] = React.useState<string[]>([]);
@@ -772,11 +827,497 @@ function CustomFilterBar({ custom, setCustom, onApply }: {
   );
 }
 
+// ─── Animal View / Edit Panel ─────────────────────────────────────────────────
+
+const EDIT_GROUPS = [
+  'Parcela 1 - Ferma', 'Parcela 2 - Ferma', 'Parcela 3 - Ferma',
+  'Parcela 4 - Ferma', 'Parcela 5 - Ferma', 'Parcela 6 - Ferma',
+  'Grupa 1 - Negestante', 'Grupa 2 - Gestatie mica', 'Grupa 3 - Gestatie mare',
+  'Grupa 4 - Juninci',
+  'Vitei Ingrasare', 'Vitele', 'Intarcati', 'Reforme', 'Insamintate', 'Generala',
+];
+
+function AeLabel({ text }: { text: string }) {
+  return <div style={ae.label}>{text}</div>;
+}
+
+function AeChips({ options, value, onChange, labels }: {
+  options: string[]; value: string;
+  onChange?: (v: string) => void; labels?: Record<string, string>;
+}) {
+  return (
+    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap' as const }}>
+      {options.map(o => (
+        <button key={o}
+          style={value === o ? ae.chipOn : ae.chip}
+          onClick={onChange ? () => onChange(o) : undefined}
+          disabled={!onChange}
+        >{labels?.[o] ?? o}</button>
+      ))}
+    </div>
+  );
+}
+
+function AeToggle({ label, value, onChange }: {
+  label: string; value: boolean; onChange?: (v: boolean) => void;
+}) {
+  return (
+    <button
+      style={value ? ae.toggleOn : ae.toggle}
+      onClick={onChange ? () => onChange(!value) : undefined}
+      disabled={!onChange}
+    >{label}: {value ? 'ON' : 'OFF'}</button>
+  );
+}
+
+function AnimalEditPanel() {
+  const [last4,       setLast4]       = useState('');
+  const [searching,   setSearching]   = useState(false);
+  const [candidates,  setCandidates]  = useState<SimpleRow[] | null>(null);
+  const [selTag,      setSelTag]      = useState<string | null>(null);
+  const [animal,      setAnimal]      = useState<Record<string, unknown> | null>(null);
+  const [loadingAnim, setLoadingAnim] = useState(false);
+  const [tab,         setTab]         = useState<'view' | 'edit'>('view');
+  const [saving,      setSaving]      = useState(false);
+  const [saveMsg,     setSaveMsg]     = useState<{ ok: boolean; text: string } | null>(null);
+
+  // Edit fields
+  const [fTag,    setFTag]    = useState('');
+  const [fComp,   setFComp]   = useState('');
+  const [fBirth,  setFBirth]  = useState('');
+  const [fSex,    setFSex]    = useState('');
+  const [fColor,  setFColor]  = useState('');
+  const [fPurp,   setFPurp]   = useState('');
+  const [fStat,   setFStat]   = useState('');
+  const [fBidaa,  setFBidaa]  = useState(false);
+  const [fPed,    setFPed]    = useState(false);
+  const [fBreed,  setFBreed]  = useState(false);
+  const [fGest,   setFGest]   = useState(false);
+  const [fGestWk, setFGestWk] = useState('');
+  const [fBull,   setFBull]   = useState(false);
+  const [fDDat,   setFDDat]   = useState('');
+  const [fDReas,  setFDReas]  = useState('');
+  const [fSDat,   setFSDat]   = useState('');
+  const [fCli,    setFCli]    = useState('');
+  const [fGrp,    setFGrp]    = useState('');
+  const [fMom,    setFMom]    = useState('');
+  const [fDad,    setFDad]    = useState('');
+  const [fCmt,    setFCmt]    = useState('');
+
+  const fill = (a: Record<string, unknown>) => {
+    setFTag(str(a.ear_tag));
+    setFComp(str(a.company));
+    setFBirth(str(a.birth_date).slice(0, 10));
+    setFSex(str(a.sex));
+    setFColor(normColorIn(str(a.color)));
+    setFPurp(str(a.purpose));
+    setFStat(str(a.status));
+    setFBidaa(!!a.bidaa);
+    const p = a.pedigree;
+    setFPed(p === true || ['yes', 'true', 'YES', 'TRUE', 'True'].includes(String(p)));
+    setFBreed(!!a.breeding);
+    setFGest(!!a.gestation);
+    setFGestWk(a.gestation_weeks != null ? str(a.gestation_weeks) : '');
+    setFBull(!!a.is_bull);
+    setFDDat(str(a.death_date).slice(0, 10));
+    setFDReas(str(a.death_reason));
+    setFSDat(str(a.sales_date).slice(0, 10));
+    setFCli(str(a.client_name));
+    setFGrp(str(a.group_name));
+    setFMom(str(a.mother_ear_tag));
+    setFDad(str(a.father_ear_tag));
+    setFCmt(str(a.comment));
+  };
+
+  const loadAnimal = (tag: string) => {
+    setSelTag(tag);
+    setLoadingAnim(true);
+    setAnimal(null);
+    setSaveMsg(null);
+    api.animalByTag(tag)
+      .then(a => { setAnimal(a); fill(a); setTab('view'); })
+      .catch(() => {})
+      .finally(() => setLoadingAnim(false));
+  };
+
+  const doSearch = async () => {
+    if (!/^\d{4}$/.test(last4)) return;
+    setSearching(true);
+    setCandidates(null);
+    setAnimal(null);
+    setSelTag(null);
+    setSaveMsg(null);
+    try {
+      const res = await api.animalSearch(last4);
+      if (res.length === 1) {
+        loadAnimal(str(res[0].ear_tag));
+      } else {
+        setCandidates(res);
+      }
+    } catch { setCandidates([]); }
+    finally { setSearching(false); }
+  };
+
+  const doSave = async () => {
+    if (!selTag) return;
+    setSaving(true);
+    setSaveMsg(null);
+    try {
+      const body: Record<string, unknown> = {
+        company: fComp, birth_date: fBirth || null, sex: fSex,
+        color: fColor, purpose: fPurp || null, status: fStat,
+        bidaa: fBidaa, pedigree: fPed, breeding: fBreed,
+        gestation: fGest,
+        gestation_weeks: fGest && fGestWk ? Number(fGestWk) : null,
+        is_bull: fBull,
+        death_date:   fStat === 'MORT'   ? fDDat || null  : null,
+        death_reason: fStat === 'MORT'   ? fDReas || null : null,
+        sales_date:   fStat === 'VANDUT' ? fSDat || null  : null,
+        client_name:  fStat === 'VANDUT' ? fCli || null   : null,
+        group_name: fGrp || null,
+        mother_ear_tag: fMom || null,
+        father_ear_tag: fDad || null,
+        comment: fCmt || null,
+      };
+      if (fTag && fTag !== selTag) body.new_ear_tag = fTag;
+      await api.animalUpdate(selTag, body);
+      const newTag = (fTag && fTag !== selTag) ? fTag : selTag;
+      loadAnimal(newTag);
+      setSaveMsg({ ok: true, text: '✓ Saved' });
+    } catch (e: unknown) {
+      setSaveMsg({ ok: false, text: e instanceof Error ? e.message : 'Save failed' });
+    } finally { setSaving(false); }
+  };
+
+  const isEdit = tab === 'edit';
+
+  const Txt = ({ v, date: isDate }: { v: string; date?: boolean }) => (
+    <div style={ae.val}>{v ? (isDate ? formatDate(v) : v) : '—'}</div>
+  );
+  const Inp = ({ v, set, type = 'text' }: { v: string; set: (x: string) => void; type?: string }) => (
+    <input style={ae.inp} type={type} value={v} onChange={e => set(e.target.value)} />
+  );
+
+  return (
+    <div style={ae.wrap}>
+
+      {/* ── Search bar ── */}
+      <div style={ae.searchRow}>
+        <span style={ae.searchLabel}>Last 4 digits:</span>
+        <input
+          style={ae.searchInp}
+          value={last4}
+          onChange={e => { if (/^\d{0,4}$/.test(e.target.value)) setLast4(e.target.value); }}
+          onKeyDown={e => e.key === 'Enter' && doSearch()}
+          maxLength={4}
+          placeholder="_ _ _ _"
+          autoFocus
+        />
+        <button style={ae.searchBtn} onClick={doSearch} disabled={last4.length !== 4 || searching}>
+          {searching ? '…' : 'Search'}
+        </button>
+        {saveMsg && (
+          <span style={{ marginLeft: 14, fontSize: 13, fontWeight: 700, color: saveMsg.ok ? C.green : '#C62828' }}>
+            {saveMsg.text}
+          </span>
+        )}
+      </div>
+
+      {/* ── Candidate list ── */}
+      {candidates !== null && (
+        <div style={{ flexShrink: 0 }}>
+          {candidates.length === 0
+            ? <div style={{ color: '#9CA3AF', fontSize: 13 }}>No animal found.</div>
+            : <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' as const, alignItems: 'center' }}>
+                <span style={{ fontSize: 12, color: '#6B7280' }}>Multiple results — select:</span>
+                {candidates.map(c => (
+                  <button key={str(c.ear_tag)} style={ae.candBtn}
+                    onClick={() => { setCandidates(null); loadAnimal(str(c.ear_tag)); }}>
+                    {str(c.ear_tag)} · {str(c.status)} · {str(c.company)}
+                  </button>
+                ))}
+              </div>
+          }
+        </div>
+      )}
+
+      {loadingAnim && <div style={{ color: '#9CA3AF', fontSize: 13, flexShrink: 0 }}>Loading…</div>}
+
+      {animal && (
+        <>
+          {/* ── Tab + Save row ── */}
+          <div style={ae.tabRow}>
+            <button style={!isEdit ? ae.tabOn : ae.tabOff} onClick={() => setTab('view')}>View</button>
+            <button style={isEdit  ? ae.tabOn : ae.tabOff} onClick={() => setTab('edit')}>Edit</button>
+            {isEdit && (
+              <button style={ae.saveBtn} onClick={doSave} disabled={saving}>
+                {saving ? 'Saving…' : '💾 Save'}
+              </button>
+            )}
+            <span style={{ marginLeft: 'auto', fontSize: 12, color: '#9CA3AF', fontFamily: 'monospace' }}>
+              {selTag}
+            </span>
+          </div>
+
+          {/* ── Two-column form ── */}
+          <div style={ae.grid}>
+
+            {/* LEFT */}
+            <div style={ae.col}>
+              <div style={ae.field}><AeLabel text="Ear Tag" />
+                {isEdit ? <Inp v={fTag} set={setFTag} /> : <Txt v={fTag} />}
+              </div>
+              <div style={ae.field}><AeLabel text="Company" />
+                <AeChips options={['Apollo','Ares','AFM','Atlas']} value={fComp} onChange={isEdit ? setFComp : undefined} />
+              </div>
+              <div style={ae.field}><AeLabel text="Birth Date" />
+                {isEdit
+                  ? <input style={ae.inp} type="date" value={fBirth} onChange={e => setFBirth(e.target.value)} />
+                  : <Txt v={fBirth} date />}
+              </div>
+              <div style={ae.field}><AeLabel text="Sex" />
+                <AeChips options={['M','F']} value={fSex} onChange={isEdit ? setFSex : undefined} />
+              </div>
+              <div style={ae.field}><AeLabel text="Color" />
+                <AeChips options={['BLACK','RED']} value={fColor} onChange={isEdit ? setFColor : undefined}
+                  labels={{ BLACK: 'Black', RED: 'Red' }} />
+              </div>
+              <div style={ae.field}><AeLabel text="Purpose" />
+                <AeChips options={['reproductie','ingrasare']} value={fPurp} onChange={isEdit ? setFPurp : undefined}
+                  labels={{ reproductie: 'Repro', ingrasare: 'Fatten' }} />
+              </div>
+              <div style={ae.field}><AeLabel text="Status" />
+                <AeChips options={['VIU','MORT','VANDUT']} value={fStat} onChange={isEdit ? setFStat : undefined} />
+              </div>
+              {fStat === 'MORT' && (<>
+                <div style={ae.field}><AeLabel text="Death Date" />
+                  {isEdit
+                    ? <input style={ae.inp} type="date" value={fDDat} onChange={e => setFDDat(e.target.value)} />
+                    : <Txt v={fDDat} date />}
+                </div>
+                <div style={ae.field}><AeLabel text="Death Reason" />
+                  {isEdit ? <Inp v={fDReas} set={setFDReas} /> : <Txt v={fDReas} />}
+                </div>
+              </>)}
+              {fStat === 'VANDUT' && (<>
+                <div style={ae.field}><AeLabel text="Sale Date" />
+                  {isEdit
+                    ? <input style={ae.inp} type="date" value={fSDat} onChange={e => setFSDat(e.target.value)} />
+                    : <Txt v={fSDat} date />}
+                </div>
+                <div style={ae.field}><AeLabel text="Client" />
+                  {isEdit ? <Inp v={fCli} set={setFCli} /> : <Txt v={fCli} />}
+                </div>
+              </>)}
+            </div>
+
+            {/* RIGHT */}
+            <div style={{ ...ae.col, borderLeft: '1px solid #E5E7EB', paddingLeft: 20 }}>
+              <div style={ae.field}><AeLabel text="Group" />
+                {isEdit
+                  ? <select style={ae.sel} value={fGrp} onChange={e => setFGrp(e.target.value)}>
+                      <option value="">— None —</option>
+                      {EDIT_GROUPS.map(g => <option key={g} value={g}>{g}</option>)}
+                    </select>
+                  : <Txt v={fGrp} />}
+              </div>
+              <div style={ae.field}><AeLabel text="Mother Ear Tag" />
+                {isEdit ? <Inp v={fMom} set={setFMom} /> : <Txt v={fMom} />}
+              </div>
+              <div style={ae.field}><AeLabel text="Father Ear Tag" />
+                {isEdit ? <Inp v={fDad} set={setFDad} /> : <Txt v={fDad} />}
+              </div>
+
+              <div style={{ borderTop: '1px solid #E5E7EB', paddingTop: 10, marginTop: 4 }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase' as const, letterSpacing: 0.8, marginBottom: 7 }}>Flags</div>
+                <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const }}>
+                  <AeToggle label="Bidaa"    value={fBidaa} onChange={isEdit ? setFBidaa : undefined} />
+                  <AeToggle label="Pedigree" value={fPed}   onChange={isEdit ? setFPed   : undefined} />
+                  {fSex !== 'M' && <AeToggle label="Breeding" value={fBreed} onChange={isEdit ? setFBreed : undefined} />}
+                  {fSex !== 'M' && <AeToggle label="Pregnant" value={fGest}  onChange={isEdit ? setFGest  : undefined} />}
+                  {fSex !== 'F' && <AeToggle label="Bull"     value={fBull}  onChange={isEdit ? setFBull  : undefined} />}
+                </div>
+                {fGest && (
+                  <div style={{ ...ae.field, marginTop: 8 }}><AeLabel text="Gestation weeks" />
+                    {isEdit ? <Inp v={fGestWk} set={setFGestWk} type="number" /> : <Txt v={fGestWk} />}
+                  </div>
+                )}
+              </div>
+
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column' as const, marginTop: 10, minHeight: 0 }}>
+                <AeLabel text="Comment" />
+                {isEdit
+                  ? <textarea
+                      style={{ ...ae.inp, flex: 1, resize: 'none' as const, fontFamily: 'inherit', minHeight: 72, paddingTop: 6 }}
+                      value={fCmt}
+                      onChange={e => setFCmt(e.target.value)}
+                    />
+                  : <div style={{ ...ae.val, flex: 1, whiteSpace: 'pre-wrap' as const, wordBreak: 'break-word' as const, overflowY: 'auto' as const }}>
+                      {fCmt || '—'}
+                    </div>
+                }
+              </div>
+            </div>
+
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ─── Column filter dropdown (Excel-style checkboxes) ─────────────────────────
+
+// selected: null = alle angezeigt (kein Filter), Set<string> = nur diese Werte anzeigen
+function ColFilterDropdown({ col: _col, options, selected, onChange }: {
+  col: string;
+  options: string[];
+  selected: Set<string> | null;
+  onChange: (sel: Set<string> | null) => void;
+}) {
+  const [open, setOpen] = React.useState(false);
+  const [pos,  setPos]  = React.useState({ top: 0, left: 0 });
+  const triggerRef = React.useRef<HTMLButtonElement>(null);
+  const panelRef   = React.useRef<HTMLDivElement>(null);
+  const allSelected = selected === null;
+
+  React.useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      const t = e.target as Node;
+      if (
+        triggerRef.current && !triggerRef.current.contains(t) &&
+        panelRef.current   && !panelRef.current.contains(t)
+      ) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  const handleOpen = () => {
+    if (!open && triggerRef.current) {
+      const r = triggerRef.current.getBoundingClientRect();
+      setPos({ top: r.bottom + 2, left: r.left });
+    }
+    setOpen(o => !o);
+  };
+
+  const toggle = (val: string) => {
+    if (allSelected) {
+      // War "alle" → deselektiere diesen einen Wert
+      onChange(new Set(options.filter(o => o !== val)));
+    } else {
+      const next = new Set(selected!);
+      next.has(val) ? next.delete(val) : next.add(val);
+      // Wenn wieder alle drin → zurück zu null (kein Filter)
+      onChange(next.size === options.length ? null : next);
+    }
+  };
+
+  const isChecked   = (val: string) => allSelected || (selected?.has(val) ?? false);
+  const activeCount = allSelected ? options.length : (selected?.size ?? 0);
+  const hasFilter   = !allSelected;
+
+  const panel = open && ReactDOM.createPortal(
+    <div ref={panelRef} style={{
+      position: 'fixed', top: pos.top, left: pos.left, zIndex: 9999,
+      background: '#FFF', border: '1px solid #D1D5DB', borderRadius: 6,
+      boxShadow: '0 4px 16px rgba(0,0,0,0.15)', minWidth: 180, maxWidth: 260,
+    }}>
+      <div style={{ padding: '6px 8px', borderBottom: '1px solid #E5E7EB', display: 'flex', gap: 6 }}>
+        <button onClick={() => onChange(null)}           style={flt.quickBtn}>Alle</button>
+        <button onClick={() => onChange(new Set())}      style={flt.quickBtn}>Keine</button>
+      </div>
+      <div style={{ maxHeight: 220, overflowY: 'auto', padding: '4px 0' }}>
+        {options.map(val => (
+          <label key={val} style={flt.item}>
+            <input
+              type="checkbox"
+              checked={isChecked(val)}
+              onChange={() => toggle(val)}
+              style={{ marginRight: 7, accentColor: '#1565C0', cursor: 'pointer' }}
+            />
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{val}</span>
+          </label>
+        ))}
+      </div>
+    </div>,
+    document.body
+  );
+
+  return (
+    <div style={{ position: 'relative', marginTop: 3 }}>
+      <button
+        ref={triggerRef}
+        onClick={handleOpen}
+        style={{
+          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+          width: '100%', height: 22, padding: '0 5px',
+          fontSize: 11, border: 'none', borderRadius: 3,
+          background: hasFilter ? '#FFF9C4' : '#FFFFFF',
+          color: '#111827', cursor: 'pointer', fontFamily: 'inherit',
+          fontWeight: hasFilter ? 700 : 400,
+        }}
+      >
+        <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', flex: 1, textAlign: 'left' }}>
+          {allSelected ? 'Alle' : `${activeCount} / ${options.length}`}
+        </span>
+        <span style={{ marginLeft: 4, flexShrink: 0 }}>▾</span>
+      </button>
+      {panel}
+    </div>
+  );
+}
+
+const flt = {
+  quickBtn: { flex: 1, height: 24, border: '1px solid #D1D5DB', borderRadius: 4, background: '#F9FAFB', fontSize: 11, fontWeight: '600' as const, cursor: 'pointer', color: '#374151' } as React.CSSProperties,
+  item: { display: 'flex', alignItems: 'center', padding: '5px 10px', cursor: 'pointer', fontSize: 12, color: '#111827' } as React.CSSProperties,
+};
+
 // ─── Data table ───────────────────────────────────────────────────────────────
 
-function DataTable({ columns, rows }: { columns: string[]; rows: SimpleRow[] }) {
-  const firstCol = columns[0];
-  const restCols = columns.slice(1);
+function DataTable({ columns, rows, filterCols = [], totalCols = [] }: {
+  columns: string[];
+  rows: SimpleRow[];
+  filterCols?: string[];
+  totalCols?: string[];
+}) {
+  // null = kein Filter (alle), Set<string> = nur diese Werte anzeigen
+  const [filters, setFilters] = React.useState<Record<string, Set<string> | null>>({});
+
+  const filterOptions = React.useMemo(() => {
+    const opts: Record<string, string[]> = {};
+    for (const col of filterCols) {
+      const vals = [...new Set(rows.map(r => String(r[col] ?? '')).filter(Boolean))].sort();
+      opts[col] = vals;
+    }
+    return opts;
+  }, [rows, filterCols]);
+
+  const filteredRows = React.useMemo(() =>
+    rows.filter(row =>
+      filterCols.every(col => {
+        const sel = filters[col];
+        if (sel === null || sel === undefined) return true;  // kein Filter
+        if (sel.size === 0) return false;                    // nichts ausgewählt
+        return sel.has(String(row[col] ?? ''));
+      })
+    ),
+  [rows, filters, filterCols]);
+
+  const totals = React.useMemo(() => {
+    const t: Record<string, number> = {};
+    for (const col of totalCols) {
+      t[col] = filteredRows.reduce((s, r) => s + (Number(r[col]) || 0), 0);
+    }
+    return t;
+  }, [filteredRows, totalCols]);
+
+  const hasFilters = filterCols.length > 0;
+  const hasTotals  = totalCols.length > 0 && filteredRows.length > 0;
+
+  const setColFilter = (col: string, sel: Set<string> | null) =>
+    setFilters(f => ({ ...f, [col]: sel }));
 
   return (
     <div style={tbl.outer}>
@@ -789,14 +1330,23 @@ function DataTable({ columns, rows }: { columns: string[]; rows: SimpleRow[] }) 
                 minWidth: colMinWidth(col),
                 ...(i === 0 ? tbl.stickyCol : {}),
                 ...(i === 0 ? tbl.stickyTh : {}),
+                verticalAlign: 'top',
               }}>
-                {formatColHeader(col)}
+                <div style={{ marginBottom: hasFilters ? 1 : 0 }}>{formatColHeader(col)}</div>
+                {filterCols.includes(col) && (
+                  <ColFilterDropdown
+                    col={col}
+                    options={filterOptions[col] ?? []}
+                    selected={col in filters ? filters[col] : null}
+                    onChange={sel => setColFilter(col, sel)}
+                  />
+                )}
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {rows.map((row, ri) => (
+          {filteredRows.map((row, ri) => (
             <tr key={ri} style={ri % 2 === 0 ? tbl.rowEven : tbl.rowOdd}>
               {columns.map((col, ci) => (
                 <td key={col} style={{
@@ -811,9 +1361,35 @@ function DataTable({ columns, rows }: { columns: string[]; rows: SimpleRow[] }) 
             </tr>
           ))}
         </tbody>
+        {hasTotals && (
+          <tfoot>
+            <tr>
+              {columns.map((col, ci) => {
+                const isTotal = totalCols.includes(col);
+                return (
+                  <td key={col} style={{
+                    ...tbl.td,
+                    minWidth: colMinWidth(col),
+                    ...(ci === 0 ? tbl.stickyCol : {}),
+                    background: '#E8F0FE',
+                    fontWeight: 700,
+                    borderTop: '2px solid #1565C0',
+                    color: isTotal ? '#1565C0' : '#374151',
+                  }}>
+                    {ci === 0
+                      ? `Total (${filteredRows.length})`
+                      : isTotal
+                        ? col === 'count'
+                          ? String(Math.round(totals[col]))
+                          : totals[col].toFixed(2) + ' t'
+                        : ''}
+                  </td>
+                );
+              })}
+            </tr>
+          </tfoot>
+        )}
       </table>
-      {/* suppress unused vars warning */}
-      {(firstCol || restCols) && null}
     </div>
   );
 }
@@ -870,9 +1446,10 @@ const C = { navy: '#1A2B4A', blue: '#1565C0', green: '#2E7D32', blueLt: '#EFF6FF
 
 const sb = {
   wrap:      { width: 248, background: C.navy, display: 'flex', flexDirection: 'column' as const, overflow: 'hidden', flexShrink: 0 } as React.CSSProperties,
-  brand:     { display: 'flex', alignItems: 'center', gap: 10, padding: '18px 16px 14px', borderBottom: '1px solid rgba(255,255,255,0.08)' } as React.CSSProperties,
-  brandIcon: { fontSize: 22 } as React.CSSProperties,
-  brandText: { fontSize: 15, fontWeight: '700', color: '#FFFFFF', letterSpacing: 0.2 } as React.CSSProperties,
+  tabs:      { display: 'flex', alignItems: 'center', gap: 6, padding: '12px 14px', borderBottom: '1px solid rgba(255,255,255,0.08)', flexShrink: 0 } as React.CSSProperties,
+  tab:       { width: 38, height: 38, borderRadius: 8, border: '2px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.06)', fontSize: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.15s' } as React.CSSProperties,
+  tabActive: { background: 'rgba(255,255,255,0.22)', borderColor: 'rgba(255,255,255,0.5)' } as React.CSSProperties,
+  brandText: { fontSize: 14, fontWeight: '700', color: '#FFFFFF', letterSpacing: 0.2, marginLeft: 4 } as React.CSSProperties,
   scroll:    { flex: 1, overflowY: 'auto' as const, padding: '8px 0 24px' },
   groupLabel:{ fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.35)', letterSpacing: 1.2, padding: '14px 16px 4px', textTransform: 'uppercase' as const },
   item:      { display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '8px 16px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' as const, borderRadius: 0, color: 'rgba(255,255,255,0.75)', fontSize: 13, fontWeight: '500', transition: 'background 0.1s' },
@@ -900,6 +1477,30 @@ const pb = {
   apply:  { height: 32, background: C.blue, border: 'none', borderRadius: 6, color: '#FFF', fontSize: 13, fontWeight: '700', padding: '0 20px', cursor: 'pointer', flexShrink: 0 } as React.CSSProperties,
   toggle: { height: 28, border: '1px solid #D1D5DB', borderRadius: 5, background: '#FFF', color: '#374151', fontSize: 12, fontWeight: '600', padding: '0 10px', cursor: 'pointer' } as React.CSSProperties,
   toggleOn:{ height: 28, border: '1px solid ' + C.blue, borderRadius: 5, background: C.blue, color: '#FFF', fontSize: 12, fontWeight: '600', padding: '0 10px', cursor: 'pointer' } as React.CSSProperties,
+};
+
+const ae = {
+  wrap:       { flex: 1, display: 'flex', flexDirection: 'column' as const, padding: '14px 20px', gap: 10, overflow: 'hidden', background: '#F8FAFC' } as React.CSSProperties,
+  searchRow:  { display: 'flex', alignItems: 'center', gap: 10, flexShrink: 0 } as React.CSSProperties,
+  searchLabel:{ fontSize: 13, fontWeight: '600', color: '#374151' } as React.CSSProperties,
+  searchInp:  { height: 36, width: 96, border: '2px solid ' + C.blue, borderRadius: 6, padding: '0 8px', fontSize: 20, fontWeight: '700', textAlign: 'center' as const, letterSpacing: 7, color: '#111827', outline: 'none', fontFamily: 'inherit' } as React.CSSProperties,
+  searchBtn:  { height: 36, background: C.blue, border: 'none', borderRadius: 6, color: '#FFF', fontSize: 13, fontWeight: '700', padding: '0 18px', cursor: 'pointer', flexShrink: 0 } as React.CSSProperties,
+  candBtn:    { border: '1px solid #D1D5DB', borderRadius: 6, padding: '4px 12px', fontSize: 12, cursor: 'pointer', background: '#FFF', color: '#111827', fontFamily: 'inherit', fontWeight: '600' as const } as React.CSSProperties,
+  tabRow:     { display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 } as React.CSSProperties,
+  tabOn:      { height: 30, border: '1px solid ' + C.blue, borderRadius: 6, padding: '0 18px', fontSize: 13, cursor: 'pointer', background: C.blue, color: '#FFF', fontFamily: 'inherit', fontWeight: '700' as const } as React.CSSProperties,
+  tabOff:     { height: 30, border: '1px solid #D1D5DB', borderRadius: 6, padding: '0 18px', fontSize: 13, cursor: 'pointer', background: '#FFF', color: '#374151', fontFamily: 'inherit', fontWeight: '600' as const } as React.CSSProperties,
+  saveBtn:    { height: 30, background: C.green, border: 'none', borderRadius: 6, color: '#FFF', fontSize: 13, fontWeight: '700' as const, padding: '0 20px', cursor: 'pointer' } as React.CSSProperties,
+  grid:       { flex: 1, display: 'grid', gridTemplateColumns: '1fr 1fr', overflow: 'hidden', minHeight: 0 } as React.CSSProperties,
+  col:        { display: 'flex', flexDirection: 'column' as const, overflow: 'hidden', paddingRight: 20 },
+  field:      { marginBottom: 7 } as React.CSSProperties,
+  label:      { fontSize: 10, fontWeight: '700' as const, color: '#6B7280', textTransform: 'uppercase' as const, letterSpacing: 0.8, marginBottom: 3 } as React.CSSProperties,
+  val:        { fontSize: 13, color: '#111827', padding: '3px 0' } as React.CSSProperties,
+  inp:        { height: 28, border: '1px solid #D1D5DB', borderRadius: 5, padding: '0 8px', fontSize: 13, color: '#111827', outline: 'none', width: '100%', boxSizing: 'border-box' as const, fontFamily: 'inherit', background: '#FFF' } as React.CSSProperties,
+  sel:        { height: 28, border: '1px solid #D1D5DB', borderRadius: 5, padding: '0 6px', fontSize: 13, color: '#111827', outline: 'none', width: '100%', boxSizing: 'border-box' as const, fontFamily: 'inherit', background: '#FFF', cursor: 'pointer' } as React.CSSProperties,
+  chip:       { height: 26, border: '1px solid #D1D5DB', borderRadius: 5, padding: '0 10px', fontSize: 12, fontWeight: '600' as const, cursor: 'pointer', background: '#FFF', color: '#374151', fontFamily: 'inherit' } as React.CSSProperties,
+  chipOn:     { height: 26, border: '1px solid ' + C.blue, borderRadius: 5, padding: '0 10px', fontSize: 12, fontWeight: '600' as const, cursor: 'pointer', background: C.blue, color: '#FFF', fontFamily: 'inherit' } as React.CSSProperties,
+  toggle:     { height: 24, border: '1px solid #D1D5DB', borderRadius: 4, padding: '0 8px', fontSize: 11, fontWeight: '600' as const, cursor: 'pointer', background: '#F9FAFB', color: '#374151', fontFamily: 'inherit' } as React.CSSProperties,
+  toggleOn:   { height: 24, border: '1px solid ' + C.green, borderRadius: 4, padding: '0 8px', fontSize: 11, fontWeight: '600' as const, cursor: 'pointer', background: C.green, color: '#FFF', fontFamily: 'inherit' } as React.CSSProperties,
 };
 
 const tbl = {

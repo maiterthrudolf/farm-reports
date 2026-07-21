@@ -1113,7 +1113,7 @@ function OverviewPanel({ data, loading, error, onRefresh }: { data: any; loading
         </OvSection>
 
         {/* YELLOW – VANDUT */}
-        <OvSection bg="#F57F17" title={`VANDUT ${data.year}`}>
+        <OvSection bg="#D4A017" title={`VANDUT ${data.year}`}>
           <OvRow label="Total vandut" value={data.yellow.total} big />
         </OvSection>
 
@@ -1127,7 +1127,7 @@ function OverviewPanel({ data, loading, error, onRefresh }: { data: any; loading
         </OvSection>
 
         {/* ORANGE – DESPAGUBIRE */}
-        <OvSection bg="#E65100" title={`DESPAGUBIRE ${data.year}`}>
+        <OvSection bg="#EF6C00" title={`DESPAGUBIRE ${data.year}`}>
           <OvRow label="Total despagubire" value={data.orange.total} big />
           <OvDivider />
           <OvRow label="Sub 6 luni"    value={data.orange.sub_6_luni}    indent />

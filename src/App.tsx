@@ -1069,23 +1069,23 @@ function OverviewPanel({ data, loading, error, onRefresh }: { data: any; loading
   if (error)   return <div style={{ padding: 20, color: '#C62828' }}>{error} <button onClick={onRefresh}>Retry</button></div>;
   if (!data)   return null;
 
-  const OvSection = ({ bg, title, children }: { bg: string; title: string; children: React.ReactNode }) => (
-    <div style={{ backgroundColor: bg, borderRadius: 10, padding: 20, flex: '1 1 280px', minWidth: 260, maxWidth: 380 }}>
-      <div style={{ fontSize: 13, fontWeight: 800, color: '#fff', letterSpacing: 1.2, textTransform: 'uppercase' as const, marginBottom: 14 }}>{title}</div>
+  const OvSection = ({ bg, title, children, dark = false }: { bg: string; title: string; children: React.ReactNode; dark?: boolean }) => (
+    <div style={{ backgroundColor: bg, borderRadius: 10, padding: 20, flex: '1 1 280px', minWidth: 260, maxWidth: 380, color: dark ? '#1A2B4A' : '#fff' }}>
+      <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: 1.2, textTransform: 'uppercase' as const, marginBottom: 14, color: 'inherit' }}>{title}</div>
       {children}
     </div>
   );
 
   const OvRow = ({ label, value, indent = false, big = false }: { label: string; value: number; indent?: boolean; big?: boolean }) => (
     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5, paddingLeft: indent ? 12 : 0 }}>
-      <span style={{ fontSize: big ? 14 : 12, color: 'rgba(255,255,255,0.9)', opacity: indent ? 0.85 : 1 }}>{label}</span>
-      <span style={{ fontSize: big ? 24 : 16, fontWeight: 800, color: '#fff', minWidth: 40, textAlign: 'right' as const }}>{value}</span>
+      <span style={{ fontSize: big ? 14 : 12, opacity: indent ? 0.75 : 1, color: 'inherit' }}>{label}</span>
+      <span style={{ fontSize: big ? 24 : 16, fontWeight: 800, color: 'inherit', minWidth: 40, textAlign: 'right' as const }}>{value}</span>
     </div>
   );
 
-  const OvDivider = () => <div style={{ height: 1, background: 'rgba(255,255,255,0.25)', margin: '10px 0' }} />;
-  const OvSubhead = ({ text }: { text: string }) => (
-    <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.65)', letterSpacing: 0.8, textTransform: 'uppercase' as const, marginBottom: 6, marginTop: 4 }}>{text}</div>
+  const OvDivider = ({ dark = false }: { dark?: boolean }) => <div style={{ height: 1, background: dark ? 'rgba(0,0,0,0.15)' : 'rgba(255,255,255,0.25)', margin: '10px 0' }} />;
+  const OvSubhead = ({ text, dark = false }: { text: string; dark?: boolean }) => (
+    <div style={{ fontSize: 10, fontWeight: 700, color: dark ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.65)', letterSpacing: 0.8, textTransform: 'uppercase' as const, marginBottom: 6, marginTop: 4 }}>{text}</div>
   );
 
   return (
@@ -1113,8 +1113,14 @@ function OverviewPanel({ data, loading, error, onRefresh }: { data: any; loading
         </OvSection>
 
         {/* YELLOW – VANDUT */}
-        <OvSection bg="#D4A017" title={`VANDUT ${data.year}`}>
+        <OvSection bg="#F0D800" title={`VANDUT ${data.year}`} dark>
           <OvRow label="Total vandut" value={data.yellow.total} big />
+          <OvDivider dark />
+          <OvSubhead text="Per companie" dark />
+          <OvRow label="Apollo" value={data.yellow.apollo} indent />
+          <OvRow label="Ares"   value={data.yellow.ares}   indent />
+          <OvRow label="AFM"    value={data.yellow.afm}    indent />
+          <OvRow label="Atlas"  value={data.yellow.atlas}  indent />
         </OvSection>
 
         {/* BLUE – MORT */}

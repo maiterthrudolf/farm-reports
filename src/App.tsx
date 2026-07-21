@@ -5,7 +5,7 @@ import { api, SimpleRow, PivotResult, FarmTag, AnimalTag } from './api';
 
 // ─── Report catalogue ──────────────────────────────────────────────────────────
 
-type ReportKind = 'simple' | 'pivot' | 'daterange' | 'futureage' | 'futureweight' | 'custom' | 'animaledit' | 'tagmanager' | 'tagreport';
+type ReportKind = 'simple' | 'pivot' | 'daterange' | 'futureage' | 'futureweight' | 'custom' | 'animaledit' | 'tagmanager' | 'tagreport' | 'overview';
 
 interface ReportDef {
   id: string;
@@ -22,6 +22,7 @@ interface ReportDef {
 
 const REPORTS: ReportDef[] = [
   // Custom (top)
+  { id: 'overview',    icon: '📊', title: 'Overview',            desc: 'Efectiv curent — VIU, VANDUT, MORT, Despagubire',          kind: 'overview',   group: 'Custom' },
   { id: 'animal_edit', icon: '✏️', title: 'View / Edit Animal', desc: 'Search by last 4 digits, view or edit all animal details', kind: 'animaledit', group: 'Custom' },
   { id: 'custom',            icon: '🔧', title: 'Custom Filter',         desc: 'Combine any filters for a tailored report',               kind: 'custom',  group: 'Custom' },
   // Herd
@@ -443,12 +444,14 @@ function PasswordGate({ children }: { children: React.ReactNode }) {
 
 function AppInner() {
   const [mode, setMode]       = useState<'animals' | 'feed'>('animals');
-  const [activeId, setActiveId] = useState<string | null>(null);
+  const [activeId, setActiveId] = useState<string | null>('overview');
   const [columns, setColumns] = useState<string[]>([]);
   const [rows, setRows]       = useState<SimpleRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState<string | null>(null);
-  const [paramsReady, setParamsReady] = useState(false);
+  const [paramsReady, setParamsReady] = useState(true);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [overviewData, setOverviewData] = useState<any>(null);
 
   // Params state
   const [dateFrom, setDateFrom] = useState('');
@@ -485,6 +488,19 @@ function AppInner() {
     const tMatch = activeId?.match(/^tag_report_(\d+)$/);
     if (!activeDef && !tMatch) return;
     if (activeDef?.kind === 'animaledit') return;
+    if (activeDef?.kind === 'overview') {
+      setLoading(true);
+      setError(null);
+      try {
+        const data = await api.overview();
+        setOverviewData(data);
+      } catch (e: unknown) {
+        setError(e instanceof Error ? e.message : 'Unknown error');
+      } finally {
+        setLoading(false);
+      }
+      return;
+    }
     setLoading(true);
     setError(null);
     try {
@@ -550,6 +566,8 @@ function AppInner() {
       <div style={layout.main}>
         {activeId === 'tag_manager' ? (
           <TagManagerPanel tags={tags} onTagsChanged={refreshTags} />
+        ) : activeDef?.kind === 'overview' ? (
+          <OverviewPanel data={overviewData} loading={loading} error={error} onRefresh={runReport} />
         ) : !activeDef && !activeTag ? (
           <Welcome />
         ) : activeDef?.kind === 'animaledit' ? (
@@ -1043,6 +1061,85 @@ function Inp({ v, set, type = 'text' }: { v: string; set: (x: string) => void; t
   return <input style={ae.inp} type={type} value={v} onChange={e => set(e.target.value)} />;
 }
 
+// ─── Overview Panel ───────────────────────────────────────────────────────────
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function OverviewPanel({ data, loading, error, onRefresh }: { data: any; loading: boolean; error: string | null; onRefresh: () => void }) {
+  if (loading) return <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9CA3AF' }}>Loading…</div>;
+  if (error)   return <div style={{ padding: 20, color: '#C62828' }}>{error} <button onClick={onRefresh}>Retry</button></div>;
+  if (!data)   return null;
+
+  const OvSection = ({ bg, title, children }: { bg: string; title: string; children: React.ReactNode }) => (
+    <div style={{ backgroundColor: bg, borderRadius: 10, padding: 20, flex: '1 1 280px', minWidth: 260, maxWidth: 380 }}>
+      <div style={{ fontSize: 13, fontWeight: 800, color: '#fff', letterSpacing: 1.2, textTransform: 'uppercase' as const, marginBottom: 14 }}>{title}</div>
+      {children}
+    </div>
+  );
+
+  const OvRow = ({ label, value, indent = false, big = false }: { label: string; value: number; indent?: boolean; big?: boolean }) => (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5, paddingLeft: indent ? 12 : 0 }}>
+      <span style={{ fontSize: big ? 14 : 12, color: 'rgba(255,255,255,0.9)', opacity: indent ? 0.85 : 1 }}>{label}</span>
+      <span style={{ fontSize: big ? 24 : 16, fontWeight: 800, color: '#fff', minWidth: 40, textAlign: 'right' as const }}>{value}</span>
+    </div>
+  );
+
+  const OvDivider = () => <div style={{ height: 1, background: 'rgba(255,255,255,0.25)', margin: '10px 0' }} />;
+  const OvSubhead = ({ text }: { text: string }) => (
+    <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.65)', letterSpacing: 0.8, textTransform: 'uppercase' as const, marginBottom: 6, marginTop: 4 }}>{text}</div>
+  );
+
+  return (
+    <div style={{ padding: 24, overflowY: 'auto', flex: 1 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+        <div style={{ fontSize: 20, fontWeight: 800, color: '#1A2B4A' }}>Overview {data.year}</div>
+        <button onClick={onRefresh} style={{ fontSize: 12, color: '#6B7280', background: 'none', border: '1px solid #E5E7EB', borderRadius: 6, padding: '4px 12px', cursor: 'pointer' }}>↻ Refresh</button>
+      </div>
+      <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' as const }}>
+
+        {/* GREEN – VIU */}
+        <OvSection bg="#2E7D32" title={`VIU — Efectiv ${data.year}`}>
+          <OvRow label="Total VIU" value={data.green.total} big />
+          <OvDivider />
+          <OvSubhead text="Femele" />
+          <OvRow label="Vaci (≥ 24 luni)"       value={data.green.femele.vaci}     indent />
+          <OvRow label="Juninci (12–24 luni)"    value={data.green.femele.juninci}  indent />
+          <OvRow label="Vitele (< 12 luni)"      value={data.green.femele.vitele}   indent />
+          <OvDivider />
+          <OvSubhead text="Masculi" />
+          <OvRow label="Masculi reproductie mari"          value={data.green.masculi.reproductie_mari}     indent />
+          <OvRow label="Masculi reproductie in devenire"   value={data.green.masculi.reproductie_devenire} indent />
+          <OvRow label="Masculi ingrasare"                 value={data.green.masculi.ingrasare}            indent />
+          <OvRow label="Vitei"                             value={data.green.masculi.vitei}                indent />
+        </OvSection>
+
+        {/* YELLOW – VANDUT */}
+        <OvSection bg="#F57F17" title={`VANDUT ${data.year}`}>
+          <OvRow label="Total vandut" value={data.yellow.total} big />
+        </OvSection>
+
+        {/* BLUE – MORT */}
+        <OvSection bg="#1565C0" title={`MORT ${data.year}`}>
+          <OvRow label="Total mort" value={data.blue.total} big />
+          <OvDivider />
+          <OvRow label="Adulti (≥ 24 luni)"        value={data.blue.adulti}      indent />
+          <OvRow label="Tineri (< 24 luni)"         value={data.blue.tineri}      indent />
+          <OvRow label="Morti fara crotal"           value={data.blue.fara_crotal} indent />
+        </OvSection>
+
+        {/* ORANGE – DESPAGUBIRE */}
+        <OvSection bg="#E65100" title={`DESPAGUBIRE ${data.year}`}>
+          <OvRow label="Total despagubire" value={data.orange.total} big />
+          <OvDivider />
+          <OvRow label="Sub 6 luni"    value={data.orange.sub_6_luni}    indent />
+          <OvRow label="Peste 6 luni"  value={data.orange.peste_6_luni}  indent />
+        </OvSection>
+
+      </div>
+    </div>
+  );
+}
+
+
 function AnimalEditPanel() {
   const [last4,       setLast4]       = useState('');
   const [searching,   setSearching]   = useState(false);
@@ -1077,6 +1174,8 @@ function AnimalEditPanel() {
   const [fDReas,  setFDReas]  = useState('');
   const [fSDat,   setFSDat]   = useState('');
   const [fCli,    setFCli]    = useState('');
+  const [fDesp,   setFDesp]   = useState(false);
+  const [fDespDat,setFDespDat]= useState('');
   const [fGrp,    setFGrp]    = useState('');
   const [fMom,    setFMom]    = useState('');
   const [fDad,    setFDad]    = useState('');
@@ -1108,6 +1207,9 @@ function AnimalEditPanel() {
     setFMom(str(a.mother_ear_tag));
     setFDad(str(a.father_ear_tag));
     setFCmt(str(a.comment));
+    const despDate = str(a.despagubire_date).slice(0, 10);
+    setFDesp(!!despDate);
+    setFDespDat(despDate);
   };
 
   const loadAnimal = (tag: string) => {
@@ -1169,6 +1271,7 @@ function AnimalEditPanel() {
     if (dadErr) return `Father Ear Tag: ${dadErr}`;
     if (fStat === 'MORT'   && !fDDat) return 'Death Date: required when status is MORT';
     if (fStat === 'VANDUT' && !fSDat) return 'Sale Date: required when status is VANDUT';
+    if (fStat === 'MORT' && fDesp && !fDespDat) return 'Despagubire Date: required when Despagubire is ON';
     return null;
   };
 
@@ -1186,10 +1289,11 @@ function AnimalEditPanel() {
         gestation: fGest,
         gestation_weeks: fGest && fGestWk ? Number(fGestWk) : null,
         is_bull: fBull,
-        death_date:   fStat === 'MORT'   ? fDDat || null  : null,
-        death_reason: fStat === 'MORT'   ? fDReas || null : null,
-        sales_date:   fStat === 'VANDUT' ? fSDat || null  : null,
-        client_name:  fStat === 'VANDUT' ? fCli || null   : null,
+        death_date:       fStat === 'MORT'   ? fDDat || null  : null,
+        death_reason:     fStat === 'MORT'   ? fDReas || null : null,
+        sales_date:       fStat === 'VANDUT' ? fSDat || null  : null,
+        client_name:      fStat === 'VANDUT' ? fCli || null   : null,
+        despagubire_date: fStat === 'MORT' && fDesp ? fDespDat || null : null,
         group_name: fGrp || null,
         mother_ear_tag: fMom || null,
         father_ear_tag: fDad || null,
@@ -1318,6 +1422,22 @@ function AnimalEditPanel() {
                 </div>
                 <div style={ae.field}><AeLabel text="Death Reason" />
                   {isEdit ? <Inp v={fDReas} set={setFDReas} /> : <Txt v={fDReas} />}
+                </div>
+                <div style={ae.field}><AeLabel text="Despagubire" />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                    <AeFlag label="Despagubire" value={fDesp} onChange={isEdit ? (v) => {
+                      setFDesp(v);
+                      if (v && !fDespDat) setFDespDat(fDDat || new Date().toISOString().slice(0, 10));
+                      if (!v) setFDespDat('');
+                    } : undefined} />
+                    {fDesp && (
+                      isEdit
+                        ? <input style={{ ...ae.inp, maxWidth: 160 }} type="date"
+                            onClick={e => (e.currentTarget as HTMLInputElement).showPicker?.()}
+                            value={fDespDat} onChange={e => setFDespDat(e.target.value)} />
+                        : <Txt v={fDespDat} date />
+                    )}
+                  </div>
                 </div>
               </>)}
               {fStat === 'VANDUT' && (<>

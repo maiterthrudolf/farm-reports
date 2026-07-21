@@ -216,6 +216,9 @@ export const api = {
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
   },
 
+  overview: () =>
+    fetch(`${BASE}/api/reports/overview`).then(r => r.json()),
+
   animalSearch: (last4: string) =>
     getList(`${BASE}/api/cattle/search?last4=${last4}`),
 

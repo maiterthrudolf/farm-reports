@@ -1237,7 +1237,14 @@ function AnimalEditPanel() {
               </div>
               {fGest && (
                 <div style={ae.field}><AeLabel text="Gestation weeks" />
-                  {isEdit ? <Inp v={fGestWk} set={setFGestWk} type="number" /> : <Txt v={fGestWk} />}
+                  {isEdit ? <Inp v={fGestWk} set={setFGestWk} type="number" /> : (() => {
+                    const cd = animal?.conception_date as string | null | undefined;
+                    if (cd) {
+                      const weeks = Math.floor((Date.now() - new Date(cd).getTime()) / (7 * 24 * 3600 * 1000));
+                      return <Txt v={weeks <= 38 ? String(weeks) : ''} />;
+                    }
+                    return <Txt v={fGestWk} />;
+                  })()}
                 </div>
               )}
 

@@ -89,6 +89,7 @@ function formatColHeader(col: string): string {
   if (/^ai:\d+:type$/.test(col))                       return `AI ${col.split(':')[1]} Type`;
   if (/^ai:\d+:bull$/.test(col))                       return `AI ${col.split(':')[1]} Bull`;
   if (/^ai:\d+:date$/.test(col))                       return `AI ${col.split(':')[1]} Date`;
+  if (col.startsWith('tag:'))                           return col.slice(4);
   return col.replace(/_/g, ' ').replace(/^\w/, c => c.toUpperCase());
 }
 
@@ -374,10 +375,11 @@ function loadColConfigs(): Record<string, ColConfig> {
 }
 
 function applyColConfig(cols: string[], cfg: ColConfig | undefined, defaultHidden: string[] = []): string[] {
-  if (!cfg) return cols.filter(c => !defaultHidden.includes(c));
+  const isAutoHidden = (c: string) => defaultHidden.includes(c) || c.startsWith('tag:');
+  if (!cfg) return cols.filter(c => !isAutoHidden(c));
   const ordered = cfg.order.filter(c => cols.includes(c));
   const newCols  = cols.filter(c => !cfg.order.includes(c));
-  return [...ordered, ...newCols].filter(c => !cfg.hidden.includes(c));
+  return [...ordered, ...newCols.filter(c => !isAutoHidden(c))].filter(c => !cfg.hidden.includes(c));
 }
 
 // ─── Password Gate ────────────────────────────────────────────────────────────

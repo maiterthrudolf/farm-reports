@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import ExcelJS from 'exceljs';
-import { api, SimpleRow, PivotResult } from './api';
+import { api, SimpleRow, PivotResult, FarmTag, AnimalTag } from './api';
 
 // ─── Report catalogue ──────────────────────────────────────────────────────────
 
-type ReportKind = 'simple' | 'pivot' | 'daterange' | 'futureage' | 'futureweight' | 'custom' | 'animaledit';
+type ReportKind = 'simple' | 'pivot' | 'daterange' | 'futureage' | 'futureweight' | 'custom' | 'animaledit' | 'tagmanager' | 'tagreport';
 
 interface ReportDef {
   id: string;
@@ -457,8 +457,17 @@ function AppInner() {
   const [custom,   setCustom]   = useState<CustomFilter>(defaultCustom);
   const [colConfigs, setColConfigs] = useState<Record<string, ColConfig>>(loadColConfigs);
   const [configOpen, setConfigOpen] = useState(false);
+  const [tags, setTags] = useState<FarmTag[]>([]);
+
+  const refreshTags = useCallback(() => {
+    api.listTags().then(setTags).catch(() => {});
+  }, []);
+  useEffect(() => { refreshTags(); }, [refreshTags]);
 
   const activeDef = REPORTS.find(r => r.id === activeId);
+  const tagMatch  = activeId?.match(/^tag_report_(\d+)$/);
+  const activeTag = tagMatch ? (tags.find(t => t.id === Number(tagMatch[1])) ?? null) : null;
+  const reportTitle = activeDef?.title ?? (activeTag ? `Tag: ${activeTag.name}` : '');
   const displayColumns = applyColConfig(columns, activeId ? colConfigs[activeId] : undefined, activeDef?.defaultHidden ?? []);
 
   const saveColConfig = (reportId: string, cfg: ColConfig) => {
@@ -471,34 +480,38 @@ function AppInner() {
     ['daterange','futureage','futureweight','custom'].includes(activeDef.kind);
 
   const runReport = useCallback(async () => {
-    if (!activeDef) return;
-    if (activeDef.kind === 'animaledit') return;
+    const tMatch = activeId?.match(/^tag_report_(\d+)$/);
+    if (!activeDef && !tMatch) return;
+    if (activeDef?.kind === 'animaledit') return;
     setLoading(true);
     setError(null);
     try {
       let c: string[] = [];
       let r: SimpleRow[] = [];
 
-      if (activeDef.kind === 'pivot') {
+      if (activeDef?.kind === 'pivot') {
         const res = await (activeDef.load!() as Promise<PivotResult>);
         c = res.columns;
         r = res.rows;
-      } else if (activeDef.kind === 'simple') {
+      } else if (activeDef?.kind === 'simple') {
         r = await (activeDef.load!() as Promise<SimpleRow[]>);
         c = r.length > 0 ? Object.keys(r[0]) : [];
-      } else if (activeDef.kind === 'daterange') {
-        if (activeDef.id === 'dead')       r = await api.dead(dateFrom, dateTo);
+      } else if (activeDef?.kind === 'daterange') {
+        if (activeDef.id === 'dead')            r = await api.dead(dateFrom, dateTo);
         else if (activeDef.id === 'calving')    r = await api.calving(dateFrom, dateTo);
         else if (activeDef.id === 'not_calving')r = await api.notCalving(dateFrom, dateTo);
         c = r.length > 0 ? Object.keys(r[0]) : [];
-      } else if (activeDef.kind === 'futureage') {
+      } else if (activeDef?.kind === 'futureage') {
         r = await api.futureAge(fDate, Number(fMin) || 0, Number(fMax) || 999);
         c = r.length > 0 ? Object.keys(r[0]) : [];
-      } else if (activeDef.kind === 'futureweight') {
+      } else if (activeDef?.kind === 'futureweight') {
         r = await api.futureWeight(fDate, Number(fMin) || 0, Number(fMax) || 9999);
         c = r.length > 0 ? Object.keys(r[0]) : [];
-      } else if (activeDef.kind === 'custom') {
+      } else if (activeDef?.kind === 'custom') {
         r = await api.custom(buildCustomParams(custom));
+        c = r.length > 0 ? Object.keys(r[0]) : [];
+      } else if (tMatch) {
+        r = await api.tagAnimals(Number(tMatch[1]));
         c = r.length > 0 ? Object.keys(r[0]) : [];
       }
 
@@ -509,15 +522,17 @@ function AppInner() {
     } finally {
       setLoading(false);
     }
-  }, [activeDef, dateFrom, dateTo, fDate, fMin, fMax, custom]);
+  }, [activeDef, activeId, dateFrom, dateTo, fDate, fMin, fMax, custom]);
 
   const selectReport = (id: string) => {
-    const def = REPORTS.find(r => r.id === id)!;
     setActiveId(id);
     setColumns([]);
     setRows([]);
     setError(null);
     setParamsReady(false);
+    if (id === 'tag_manager') return;  // TagManagerPanel renders its own UI
+    if (id.startsWith('tag_report_')) { setParamsReady(true); return; }
+    const def = REPORTS.find(r => r.id === id)!;
     if (!['daterange','futureage','futureweight','custom'].includes(def.kind)) {
       setParamsReady(true);
     }
@@ -529,20 +544,22 @@ function AppInner() {
 
   return (
     <div style={layout.root}>
-      <Sidebar activeId={activeId} onSelect={selectReport} mode={mode} onModeChange={m => { setMode(m); setActiveId(null); setColumns([]); setRows([]); setError(null); setParamsReady(false); }} />
+      <Sidebar activeId={activeId} onSelect={selectReport} mode={mode} onModeChange={m => { setMode(m); setActiveId(null); setColumns([]); setRows([]); setError(null); setParamsReady(false); }} tags={tags} />
       <div style={layout.main}>
-        {!activeDef ? (
+        {activeId === 'tag_manager' ? (
+          <TagManagerPanel tags={tags} onTagsChanged={refreshTags} />
+        ) : !activeDef && !activeTag ? (
           <Welcome />
-        ) : activeDef.kind === 'animaledit' ? (
+        ) : activeDef?.kind === 'animaledit' ? (
           <AnimalEditPanel />
         ) : (
           <>
             <Header
-              title={activeDef.title}
-              icon={activeDef.icon}
+              title={reportTitle}
+              icon={activeDef?.icon ?? '🏷️'}
               rowCount={displayColumns.length > 0 ? rows.length : 0}
               hasData={rows.length > 0}
-              onExport={() => void exportXLSX(displayColumns, rows, activeDef.title)}
+              onExport={() => void exportXLSX(displayColumns, rows, reportTitle)}
               onRefresh={paramsReady ? runReport : undefined}
               onConfigCols={columns.length > 0 ? () => setConfigOpen(true) : undefined}
             />
@@ -584,9 +601,9 @@ function AppInner() {
           </>
         )}
       </div>
-      {configOpen && activeDef && columns.length > 0 && (
+      {configOpen && (activeDef || activeTag) && columns.length > 0 && (
         <ColConfigOverlay
-          reportTitle={activeDef.title}
+          reportTitle={reportTitle}
           allColumns={columns}
           config={activeId ? colConfigs[activeId] : undefined}
           onSave={cfg => activeId && saveColConfig(activeId, cfg)}
@@ -633,11 +650,12 @@ function CronStatusBar() {
   );
 }
 
-function Sidebar({ activeId, onSelect, mode, onModeChange }: {
+function Sidebar({ activeId, onSelect, mode, onModeChange, tags }: {
   activeId: string | null;
   onSelect: (id: string) => void;
   mode: 'animals' | 'feed';
   onModeChange: (m: 'animals' | 'feed') => void;
+  tags: FarmTag[];
 }) {
   const groups = mode === 'animals' ? ANIMAL_GROUPS : FEED_GROUPS;
   return (
@@ -679,6 +697,28 @@ function Sidebar({ activeId, onSelect, mode, onModeChange }: {
             </div>
           );
         })}
+        {mode === 'animals' && (
+          <div>
+            <div style={sb.groupLabel}>TAGS</div>
+            <button
+              style={{ ...sb.item, ...(activeId === 'tag_manager' ? sb.itemActive : {}) }}
+              onClick={() => onSelect('tag_manager')}
+            >
+              <span style={sb.itemIcon}>⚙️</span>
+              <span style={sb.itemTitle}>Tag Manager</span>
+            </button>
+            {tags.map(t => (
+              <button
+                key={t.id}
+                style={{ ...sb.item, ...(activeId === `tag_report_${t.id}` ? sb.itemActive : {}) }}
+                onClick={() => onSelect(`tag_report_${t.id}`)}
+              >
+                <span style={sb.itemIcon}>🏷️</span>
+                <span style={sb.itemTitle}>{t.name}</span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
       <CronStatusBar />
     </div>
@@ -863,6 +903,82 @@ function CustomFilterBar({ custom, setCustom, onApply }: {
   );
 }
 
+// ─── Tag Manager Panel ────────────────────────────────────────────────────────
+
+function TagManagerPanel({ tags, onTagsChanged }: { tags: FarmTag[]; onTagsChanged: () => void }) {
+  const [name,     setName]     = React.useState('');
+  const [creating, setCreating] = React.useState(false);
+  const [error,    setError]    = React.useState<string | null>(null);
+
+  const create = async () => {
+    if (!name.trim()) return;
+    setCreating(true);
+    setError(null);
+    try {
+      await api.createTag(name.trim());
+      setName('');
+      onTagsChanged();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error');
+    } finally { setCreating(false); }
+  };
+
+  const doDelete = async (id: number, tagName: string) => {
+    if (!window.confirm(`Tag "${tagName}" und alle Tier-Zuordnungen löschen?`)) return;
+    try {
+      await api.deleteTag(id);
+      onTagsChanged();
+    } catch (e) {
+      alert(e instanceof Error ? e.message : 'Error');
+    }
+  };
+
+  return (
+    <div style={{ ...ae.wrap, alignItems: 'flex-start' }}>
+      <div style={{ fontSize: 17, fontWeight: 700, color: C.navy, marginBottom: 20 }}>⚙️ Tag Manager</div>
+
+      {/* Create */}
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 24 }}>
+        <input
+          style={{ ...ae.inp, width: 260, height: 32 }}
+          placeholder="Neuer Tag-Name…"
+          value={name}
+          onChange={e => setName(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && create()}
+          autoFocus
+        />
+        <button
+          style={{ ...ae.saveBtn, height: 32, padding: '0 18px', opacity: creating || !name.trim() ? 0.6 : 1 }}
+          onClick={create}
+          disabled={creating || !name.trim()}
+        >
+          {creating ? '…' : '+ Erstellen'}
+        </button>
+        {error && <span style={{ color: '#C62828', fontSize: 13 }}>{error}</span>}
+      </div>
+
+      {/* List */}
+      {tags.length === 0 ? (
+        <div style={{ color: '#9CA3AF', fontSize: 14 }}>Noch keine Tags definiert.</div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column' as const, gap: 8, width: 480 }}>
+          {tags.map(t => (
+            <div key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 16px', background: '#FFF', border: '1px solid #E5E7EB', borderRadius: 8 }}>
+              <span style={{ fontWeight: 600, fontSize: 14, flex: 1, color: '#111827' }}>{t.name}</span>
+              <button
+                style={{ height: 28, background: '#FFF', border: '1px solid #EF4444', borderRadius: 5, color: '#EF4444', fontSize: 12, fontWeight: 700, padding: '0 14px', cursor: 'pointer' }}
+                onClick={() => doDelete(t.id, t.name)}
+              >
+                Löschen
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Animal View / Edit Panel ─────────────────────────────────────────────────
 
 const EDIT_GROUPS = [
@@ -962,6 +1078,7 @@ function AnimalEditPanel() {
   const [fMom,    setFMom]    = useState('');
   const [fDad,    setFDad]    = useState('');
   const [fCmt,    setFCmt]    = useState('');
+  const [animalTags, setAnimalTags] = useState<AnimalTag[]>([]);
 
   const fill = (a: Record<string, unknown>) => {
     setFTag(str(a.ear_tag));
@@ -995,10 +1112,16 @@ function AnimalEditPanel() {
     setLoadingAnim(true);
     setAnimal(null);
     setSaveMsg(null);
-    api.animalByTag(tag)
-      .then(a => { setAnimal(a); setSnapshot(a); fill(a); setTab('view'); })
-      .catch(() => {})
-      .finally(() => setLoadingAnim(false));
+    Promise.all([
+      api.animalByTag(tag),
+      api.getAnimalTags(tag).catch(() => [] as AnimalTag[]),
+    ]).then(([a, aTags]) => {
+      setAnimal(a);
+      setSnapshot(a);
+      fill(a);
+      setAnimalTags(aTags);
+      setTab('view');
+    }).catch(() => {}).finally(() => setLoadingAnim(false));
   };
 
   const doSearch = async () => {
@@ -1072,6 +1195,8 @@ function AnimalEditPanel() {
       if (fTag && fTag !== selTag) body.new_ear_tag = fTag;
       await api.animalUpdate(selTag, body);
       const newTag = (fTag && fTag !== selTag) ? fTag : selTag;
+      const taggedIds = animalTags.filter(t => t.value).map(t => t.id);
+      await api.setAnimalTags(newTag, taggedIds).catch(() => {});
       loadAnimal(newTag);
       setSaveMsg({ ok: true, text: '✓ Saved' });
     } catch (e: unknown) {
@@ -1266,6 +1391,26 @@ function AnimalEditPanel() {
                     </div>
                 }
               </div>
+
+              {animalTags.length > 0 && (
+                <>
+                  <div style={{ borderTop: '1px solid #E5E7EB', margin: '10px 0 10px' }} />
+                  <div style={ae.field}>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: '#9CA3AF', textTransform: 'uppercase' as const, letterSpacing: 0.8, marginBottom: 7 }}>Tags</div>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' as const }}>
+                      {animalTags.map(t => (
+                        isEdit
+                          ? <button key={t.id}
+                              style={t.value ? ae.chipOn : ae.chip}
+                              onClick={() => setAnimalTags(prev => prev.map(p => p.id === t.id ? { ...p, value: !p.value } : p))}>
+                              {t.name}
+                            </button>
+                          : <AeFlag key={t.id} label={t.name} value={t.value} />
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )}
 
             </div>
           </div>

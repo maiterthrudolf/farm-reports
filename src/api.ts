@@ -14,6 +14,8 @@ async function getPivot(url: string): Promise<{ columns: string[]; rows: Record<
 
 export type SimpleRow = Record<string, unknown>;
 export type PivotResult = { columns: string[]; rows: SimpleRow[] };
+export interface FarmTag { id: number; name: string; created_at?: string; }
+export interface AnimalTag { id: number; name: string; value: boolean; }
 
 // Backend paths (from routers/reports.py):
 //   /animals               → all animals
@@ -176,6 +178,43 @@ export const api = {
       created_time: r.created_time,
     }))
   ),
+
+  listTags: () =>
+    fetch(`${BASE}/api/tags`).then(r => r.json()) as Promise<FarmTag[]>,
+
+  createTag: async (name: string): Promise<FarmTag> => {
+    const r = await fetch(`${BASE}/api/tags`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name }),
+    });
+    if (!r.ok) {
+      const d = await r.json().catch(() => null);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      throw new Error((d as any)?.detail ?? `HTTP ${r.status}`);
+    }
+    return r.json();
+  },
+
+  deleteTag: async (id: number): Promise<void> => {
+    const r = await fetch(`${BASE}/api/tags/${id}`, { method: 'DELETE' });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  },
+
+  tagAnimals: (tagId: number) =>
+    getList(`${BASE}/api/tags/${tagId}/animals`),
+
+  getAnimalTags: (earTag: string) =>
+    fetch(`${BASE}/api/tags/animal/${encodeURIComponent(earTag)}`).then(r => r.json()) as Promise<AnimalTag[]>,
+
+  setAnimalTags: async (earTag: string, tagIds: number[]): Promise<void> => {
+    const r = await fetch(`${BASE}/api/tags/animal/${encodeURIComponent(earTag)}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(tagIds),
+    });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  },
 
   animalSearch: (last4: string) =>
     getList(`${BASE}/api/cattle/search?last4=${last4}`),

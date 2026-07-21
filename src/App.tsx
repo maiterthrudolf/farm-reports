@@ -1157,6 +1157,11 @@ function AnimalEditPanel() {
               <div style={ae.field}><AeLabel text="Ear Tag" />
                 {isEdit ? <Inp v={fTag} set={setFTag} /> : <Txt v={fTag} />}
               </div>
+              <div style={ae.field}><AeLabel text="Sex" />
+                {isEdit
+                  ? <AeChips options={['M','F']} value={fSex} onChange={setFSex} />
+                  : <Txt v={fSex} />}
+              </div>
               <div style={ae.field}><AeLabel text="Company" />
                 <AeChips options={['Apollo','Ares','AFM','Atlas']} value={fComp} onChange={isEdit ? setFComp : undefined} />
               </div>
@@ -1164,9 +1169,6 @@ function AnimalEditPanel() {
                 {isEdit
                   ? <input style={ae.inp} type="date" onClick={e => (e.currentTarget as HTMLInputElement).showPicker?.()} value={fBirth} onChange={e => setFBirth(e.target.value)} />
                   : <Txt v={fBirth} date />}
-              </div>
-              <div style={ae.field}><AeLabel text="Sex" />
-                <AeChips options={['M','F']} value={fSex} onChange={isEdit ? setFSex : undefined} />
               </div>
               <div style={ae.field}><AeLabel text="Color" />
                 <AeChips options={['BLACK','RED']} value={fColor} onChange={isEdit ? setFColor : undefined}

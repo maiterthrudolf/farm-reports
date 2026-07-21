@@ -608,6 +608,7 @@ function AppInner() {
           reportTitle={reportTitle}
           allColumns={columns}
           config={activeId ? colConfigs[activeId] : undefined}
+          defaultAutoHidden={columns.filter(c => c.startsWith('tag:') || (activeDef?.defaultHidden ?? []).includes(c))}
           onSave={cfg => activeId && saveColConfig(activeId, cfg)}
           onClose={() => setConfigOpen(false)}
         />
@@ -1786,13 +1787,14 @@ const misc = {
 // ─── Column Configurator Overlay ──────────────────────────────────────────────
 
 function ColConfigOverlay({
-  reportTitle, allColumns, config, onSave, onClose,
+  reportTitle, allColumns, config, defaultAutoHidden = [], onSave, onClose,
 }: {
-  reportTitle: string;
-  allColumns:  string[];
-  config:      ColConfig | undefined;
-  onSave:      (cfg: ColConfig) => void;
-  onClose:     () => void;
+  reportTitle:       string;
+  allColumns:        string[];
+  config:            ColConfig | undefined;
+  defaultAutoHidden?: string[];
+  onSave:            (cfg: ColConfig) => void;
+  onClose:           () => void;
 }) {
   const initOrder = React.useMemo(() => {
     if (config?.order?.length) {
@@ -1803,8 +1805,13 @@ function ColConfigOverlay({
     return [...allColumns];
   }, []);  // eslint-disable-line react-hooks/exhaustive-deps
 
+  const initHidden = React.useMemo(() => {
+    if (config) return new Set(config.hidden);
+    return new Set(defaultAutoHidden);
+  }, []);  // eslint-disable-line react-hooks/exhaustive-deps
+
   const [items,   setItems]   = React.useState<string[]>(initOrder);
-  const [hidden,  setHidden]  = React.useState<Set<string>>(new Set(config?.hidden ?? []));
+  const [hidden,  setHidden]  = React.useState<Set<string>>(initHidden);
   const [dragIdx, setDragIdx] = React.useState<number | null>(null);
 
   const toggleHidden = (col: string) =>

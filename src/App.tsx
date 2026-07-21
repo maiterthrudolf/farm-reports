@@ -26,6 +26,7 @@ const REPORTS: ReportDef[] = [
   { id: 'custom',            icon: '🔧', title: 'Custom Filter',         desc: 'Combine any filters for a tailored report',               kind: 'custom',  group: 'Custom' },
   // Herd
   { id: 'all_animals',       icon: '🐄', title: 'All Animals',          desc: 'Complete list incl. dead & sold, last weight & pregnancy', kind: 'simple',  group: 'Herd',     load: () => api.allAnimals() },
+  { id: 'all_mothers',       icon: '🐄', title: 'All Mothers',          desc: 'Mothers with all their calves incl. sold & history',      kind: 'simple',  group: 'Herd',     load: () => api.allMothers() },
   { id: 'heifers_1624',      icon: '🐮', title: 'Heifers 16–24 m',      desc: 'Female 16–24 months, alive',                              kind: 'simple',  group: 'Herd',     load: () => api.bySex('F', 16, 24) },
   { id: 'heifers_1216',      icon: '🐄', title: 'Heifers 12–16 m',      desc: 'Female 12–16 months, alive',                              kind: 'simple',  group: 'Herd',     load: () => api.bySex('F', 12, 16) },
   { id: 'young_females',     icon: '🐣', title: 'Young Females 6–12 m', desc: 'Female 6–12 months, alive',                               kind: 'simple',  group: 'Herd',     load: () => api.bySex('F', 6, 12) },

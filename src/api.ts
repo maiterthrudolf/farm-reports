@@ -37,6 +37,7 @@ export type PivotResult = { columns: string[]; rows: SimpleRow[] };
 
 export const api = {
   allAnimals:        () => getList(`${BASE}/api/reports/animals`),
+  allMothers:        () => getList(`${BASE}/api/reports/mothers`),
   births:            () => getList(`${BASE}/api/reports/births`),
   closeBirths:       () => getList(`${BASE}/api/reports/births/close`),
   aiPrepared:        () => getList(`${BASE}/api/reports/ai/prepared`),

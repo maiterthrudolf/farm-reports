@@ -598,6 +598,40 @@ function AppInner() {
 
 // ─── Sidebar ──────────────────────────────────────────────────────────────────
 
+function CronStatusBar() {
+  const [info, setInfo] = React.useState<{ run_at: string; status: string; animals_updated: number | null } | null | 'loading'>('loading');
+
+  React.useEffect(() => {
+    api.cronStatus()
+      .then(rows => {
+        const job = rows.find(r => r.job_name === 'expire_gestation') ?? null;
+        setInfo(job);
+      })
+      .catch(() => setInfo(null));
+  }, []);
+
+  if (info === 'loading') return null;
+
+  const daysSince = info
+    ? Math.floor((Date.now() - new Date(info.run_at).getTime()) / 86_400_000)
+    : null;
+  const overdue = daysSince === null || daysSince > 8;
+  const bg    = overdue ? '#7F1D1D' : 'rgba(255,255,255,0.07)';
+  const color = overdue ? '#FCA5A5' : 'rgba(255,255,255,0.5)';
+  const icon  = overdue ? '⚠' : '✓';
+
+  const label = info
+    ? `${icon} Gestation-Check: vor ${daysSince}d${info.animals_updated ? ` (${info.animals_updated} akt.)` : ''}`
+    : `⚠ Gestation-Check: nie gelaufen`;
+
+  return (
+    <div style={{ background: bg, padding: '8px 12px', borderTop: '1px solid rgba(255,255,255,0.08)', fontSize: 11, color, lineHeight: 1.4 }}
+         title={info ? `Letzter Lauf: ${new Date(info.run_at).toLocaleString('de-DE')} — Status: ${info.status}` : 'Cron-Job hat noch nie gelaufen'}>
+      {label}
+    </div>
+  );
+}
+
 function Sidebar({ activeId, onSelect, mode, onModeChange }: {
   activeId: string | null;
   onSelect: (id: string) => void;
@@ -645,6 +679,7 @@ function Sidebar({ activeId, onSelect, mode, onModeChange }: {
           );
         })}
       </div>
+      <CronStatusBar />
     </div>
   );
 }

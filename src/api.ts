@@ -78,6 +78,7 @@ export const api = {
   metaCompanies: () => fetch(`${BASE}/api/reports/meta/companies`).then(r => r.json()) as Promise<string[]>,
   metaGroups:    () => fetch(`${BASE}/api/reports/meta/groups`).then(r => r.json()) as Promise<string[]>,
   metaClients:   () => fetch(`${BASE}/api/reports/meta/clients`).then(r => r.json()) as Promise<string[]>,
+  cronStatus:    () => fetch(`${BASE}/api/reports/cron-status`).then(r => r.json()) as Promise<{ job_name: string; run_at: string; status: string; animals_updated: number | null; detail: string | null }[]>,
 
   // Pivot reports
   weights:           () => getPivot(`${BASE}/api/reports/weights`),

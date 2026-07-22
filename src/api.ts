@@ -219,6 +219,13 @@ export const api = {
   overview: () =>
     fetch(`${BASE}/api/reports/overview`).then(r => r.json()),
 
+  inventoryReport: () =>
+    fetch(`${BASE}/api/reports/inventory`).then(r => r.json()) as Promise<{
+      id: number; group_name: string; started_at: string; ended_at: string;
+      total: number; found_count: number;
+      animals: { ear_tag: string; found: boolean; found_at: string | null }[];
+    }[]>,
+
   animalSearch: (last4: string) =>
     getList(`${BASE}/api/cattle/search?last4=${last4}`),
 

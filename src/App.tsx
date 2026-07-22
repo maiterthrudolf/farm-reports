@@ -5,7 +5,7 @@ import { api, SimpleRow, PivotResult, FarmTag, AnimalTag } from './api';
 
 // ─── Report catalogue ──────────────────────────────────────────────────────────
 
-type ReportKind = 'simple' | 'pivot' | 'daterange' | 'futureage' | 'futureweight' | 'custom' | 'animaledit' | 'tagmanager' | 'tagreport' | 'overview';
+type ReportKind = 'simple' | 'pivot' | 'daterange' | 'futureage' | 'futureweight' | 'custom' | 'animaledit' | 'tagmanager' | 'tagreport' | 'overview' | 'inventory';
 
 interface ReportDef {
   id: string;
@@ -23,6 +23,7 @@ interface ReportDef {
 const REPORTS: ReportDef[] = [
   // Custom (top)
   { id: 'overview',    icon: '📊', title: 'Overview',            desc: 'Efectiv curent — VIU, VANDUT, MORT, Despagubire',          kind: 'overview',   group: 'Custom' },
+  { id: 'inventory',   icon: '📋', title: 'Inventory',            desc: 'Group inventories — date, found / not found per animal',   kind: 'inventory',  group: 'Custom' },
   { id: 'animal_edit', icon: '✏️', title: 'View / Edit Animal', desc: 'Search by last 4 digits, view or edit all animal details', kind: 'animaledit', group: 'Custom' },
   { id: 'custom',            icon: '🔧', title: 'Custom Filter',         desc: 'Combine any filters for a tailored report',               kind: 'custom',  group: 'Custom' },
   // Herd
@@ -488,6 +489,7 @@ function AppInner() {
     const tMatch = activeId?.match(/^tag_report_(\d+)$/);
     if (!activeDef && !tMatch) return;
     if (activeDef?.kind === 'animaledit') return;
+    if (activeDef?.kind === 'inventory') return;
     if (activeDef?.kind === 'overview') {
       setLoading(true);
       setError(null);
@@ -554,6 +556,9 @@ function AppInner() {
     if (!['daterange','futureage','futureweight','custom'].includes(def.kind)) {
       setParamsReady(true);
     }
+    if (def.kind === 'inventory' || def.kind === 'animaledit') {
+      setParamsReady(false);
+    }
   };
 
   useEffect(() => {
@@ -568,6 +573,8 @@ function AppInner() {
           <TagManagerPanel tags={tags} onTagsChanged={refreshTags} />
         ) : activeDef?.kind === 'overview' ? (
           <OverviewPanel data={overviewData} loading={loading} error={error} onRefresh={runReport} />
+        ) : activeDef?.kind === 'inventory' ? (
+          <InventoryPanel />
         ) : !activeDef && !activeTag ? (
           <Welcome />
         ) : activeDef?.kind === 'animaledit' ? (
@@ -1070,16 +1077,16 @@ function OverviewPanel({ data, loading, error, onRefresh }: { data: any; loading
   if (!data)   return null;
 
   const OvSection = ({ bg, title, children, dark = false }: { bg: string; title: string; children: React.ReactNode; dark?: boolean }) => (
-    <div style={{ backgroundColor: bg, borderRadius: 10, padding: 20, flex: '1 1 280px', minWidth: 260, maxWidth: 380, color: dark ? '#1A2B4A' : '#fff' }}>
+    <div style={{ backgroundColor: bg, borderRadius: 10, padding: 20, flex: '1 1 280px', minWidth: 260, maxWidth: 420, color: dark ? '#1A2B4A' : '#fff' }}>
       <div style={{ fontSize: 13, fontWeight: 800, letterSpacing: 1.2, textTransform: 'uppercase' as const, marginBottom: 14, color: 'inherit' }}>{title}</div>
       {children}
     </div>
   );
 
-  const OvRow = ({ label, value, indent = false, big = false }: { label: string; value: number; indent?: boolean; big?: boolean }) => (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5, paddingLeft: indent ? 12 : 0 }}>
-      <span style={{ fontSize: big ? 14 : 12, opacity: indent ? 0.75 : 1, color: 'inherit' }}>{label}</span>
-      <span style={{ fontSize: big ? 24 : 16, fontWeight: 800, color: 'inherit', minWidth: 40, textAlign: 'right' as const }}>{value}</span>
+  const OvRow = ({ label, value, indent = false, sub = false, big = false }: { label: string; value: number; indent?: boolean; sub?: boolean; big?: boolean }) => (
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5, paddingLeft: sub ? 28 : indent ? 12 : 0 }}>
+      <span style={{ fontSize: big ? 14 : 12, opacity: sub ? 0.55 : indent ? 0.75 : 1, color: 'inherit' }}>{label}</span>
+      <span style={{ fontSize: big ? 24 : sub ? 14 : 16, fontWeight: 800, color: 'inherit', minWidth: 40, textAlign: 'right' as const }}>{value ?? 0}</span>
     </div>
   );
 
@@ -1097,50 +1104,136 @@ function OverviewPanel({ data, loading, error, onRefresh }: { data: any; loading
       <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap' as const }}>
 
         {/* GREEN – VIU */}
-        <OvSection bg="#2E7D32" title={`VIU — Efectiv ${data.year}`}>
+        <OvSection bg="#2E7D32" title={`Efectiv vii (inregistrati)`}>
           <OvRow label="Total VIU" value={data.green.total} big />
           <OvDivider />
           <OvSubhead text="Femele" />
-          <OvRow label="Vaci (≥ 24 luni)"       value={data.green.femele.vaci}     indent />
-          <OvRow label="Juninci (12–24 luni)"    value={data.green.femele.juninci}  indent />
-          <OvRow label="Vitele (< 12 luni)"      value={data.green.femele.vitele}   indent />
+          <OvRow label="Femele peste 24 luni (matca)"  value={data.green.f_peste24} indent />
+          <OvRow label="Femele 16-24 luni"              value={data.green.f_1624}    indent />
+          <OvRow label="Femele 12-16 luni"              value={data.green.f_1216}    indent />
+          <OvRow label="Femele 6-12 luni"               value={data.green.f_612}     indent />
+          <OvRow label="Femele 0-6 luni"                value={data.green.f_06}      indent />
           <OvDivider />
           <OvSubhead text="Masculi" />
-          <OvRow label="Masculi reproductie mari"          value={data.green.masculi.reproductie_mari}     indent />
-          <OvRow label="Masculi reproductie in devenire"   value={data.green.masculi.reproductie_devenire} indent />
-          <OvRow label="Masculi ingrasare"                 value={data.green.masculi.ingrasare}            indent />
-          <OvRow label="Vitei"                             value={data.green.masculi.vitei}                indent />
+          <OvRow label="Masculi peste 12 luni (fara flag de bull)"                value={data.green.m_peste12_nr}  indent />
+          <OvRow label="Masculi 6-12 luni"                                     value={data.green.m_612}         indent />
+          <OvRow label="Masculi 0-6 luni"                                      value={data.green.m_06}          indent />
+          <OvRow label="Masculi reproductie in devenire sub 24 luni (flag bull)" value={data.green.m_repr_dev}    indent />
+          <OvRow label="Masculi reproductie peste 24 luni (flag bull)"          value={data.green.m_repr_mari}   indent />
         </OvSection>
 
         {/* YELLOW – VANDUT */}
-        <OvSection bg="#F0D800" title={`VANDUT ${data.year}`} dark>
+        <OvSection bg="#F0D800" title={`Vanzari ${data.year}`} dark>
           <OvRow label="Total vandut" value={data.yellow.total} big />
           <OvDivider dark />
-          <OvSubhead text="Per companie" dark />
-          <OvRow label="Apollo" value={data.yellow.apollo} indent />
-          <OvRow label="Ares"   value={data.yellow.ares}   indent />
-          <OvRow label="AFM"    value={data.yellow.afm}    indent />
-          <OvRow label="Atlas"  value={data.yellow.atlas}  indent />
+          <OvRow label="Femele"              value={data.yellow.femele}        indent />
+          <OvRow label="Femele reforme"      value={data.yellow.f_reforme}     sub />
+          <OvRow label="Femele reproductie"  value={data.yellow.f_reproductie} sub />
+          <OvRow label="Femele carne"        value={data.yellow.f_carne}       sub />
+          <OvDivider dark />
+          <OvRow label="Masculi"             value={data.yellow.masculi}       indent />
         </OvSection>
 
         {/* BLUE – MORT */}
-        <OvSection bg="#1565C0" title={`MORT ${data.year}`}>
+        <OvSection bg="#1565C0" title={`Morti ${data.year} (fara despagubire)`}>
           <OvRow label="Total mort" value={data.blue.total} big />
           <OvDivider />
-          <OvRow label="Adulti (≥ 24 luni)"        value={data.blue.adulti}      indent />
-          <OvRow label="Tineri (< 24 luni)"         value={data.blue.tineri}      indent />
-          <OvRow label="Morti fara crotal"           value={data.blue.fara_crotal} indent />
+          <OvRow label="Morti peste 24 luni"             value={data.blue.peste24} indent />
+          <OvRow label="Morti sub 24 luni"               value={data.blue.sub24}   indent />
+          <OvRow label="Morti sub 24 luni fara crotal"   value={data.blue.noid}    indent />
         </OvSection>
 
         {/* ORANGE – DESPAGUBIRE */}
-        <OvSection bg="#EF6C00" title={`DESPAGUBIRE ${data.year}`}>
+        <OvSection bg="#EF6C00" title={`Despagubiri ${data.year}`}>
           <OvRow label="Total despagubire" value={data.orange.total} big />
           <OvDivider />
-          <OvRow label="Sub 6 luni"    value={data.orange.sub_6_luni}    indent />
-          <OvRow label="Peste 6 luni"  value={data.orange.peste_6_luni}  indent />
+          <OvRow label="Despagubire 0-6 luni"    value={data.orange.sub_6_luni}   indent />
+          <OvRow label="Despagubire peste 6 luni" value={data.orange.peste_6_luni} indent />
         </OvSection>
 
       </div>
+    </div>
+  );
+}
+
+
+function InventoryPanel() {
+  const [inventories, setInventories] = useState<{
+    id: number; group_name: string; started_at: string; ended_at: string;
+    total: number; found_count: number;
+    animals: { ear_tag: string; found: boolean; found_at: string | null }[];
+  }[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [expanded, setExpanded] = useState<number | null>(null);
+
+  useEffect(() => {
+    api.inventoryReport()
+      .then(data => { setInventories(data); setLoading(false); })
+      .catch((e: Error) => { setError(e.message); setLoading(false); });
+  }, []);
+
+  const fmtDt = (s: string | null) => s ? s.slice(0, 16).replace('T', ' ') : '—';
+
+  return (
+    <div style={{ padding: '24px 32px', maxWidth: 860, margin: '0 auto' }}>
+      <h2 style={{ margin: '0 0 20px', fontSize: 22, fontWeight: 800, color: '#1a1a1a' }}>Inventory Reports</h2>
+
+      {loading && <div style={{ color: '#666', padding: 24 }}>Loading…</div>}
+      {error   && <div style={{ color: '#C62828', padding: 24 }}>Error: {error}</div>}
+      {!loading && !error && inventories.length === 0 && (
+        <div style={{ color: '#666', padding: 24 }}>No completed inventories found.</div>
+      )}
+
+      {inventories.map(inv => {
+        const notFound = inv.total - inv.found_count;
+        const isOpen = expanded === inv.id;
+        return (
+          <div key={inv.id} style={{ marginBottom: 12, border: '1px solid #ddd', borderRadius: 10, overflow: 'hidden', background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,.06)' }}>
+            <div
+              onClick={() => setExpanded(isOpen ? null : inv.id)}
+              style={{ padding: '14px 18px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 16, background: isOpen ? '#f8f8f8' : '#fff' }}
+            >
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700, fontSize: 15, color: '#1a1a1a' }}>{inv.group_name}</div>
+                <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>{fmtDt(inv.ended_at)}</div>
+              </div>
+              <div style={{ display: 'flex', gap: 14, alignItems: 'center' }}>
+                <span style={{ color: '#2E7D32', fontWeight: 700, fontSize: 14 }}>✓ {inv.found_count}</span>
+                <span style={{ color: '#999' }}>/</span>
+                <span style={{ color: notFound > 0 ? '#C62828' : '#999', fontWeight: 700, fontSize: 14 }}>✗ {notFound}</span>
+                <span style={{ color: '#555', fontSize: 13 }}>Total: {inv.total}</span>
+                <span style={{ color: '#aaa', fontSize: 16 }}>{isOpen ? '▲' : '▼'}</span>
+              </div>
+            </div>
+
+            {isOpen && (
+              <div style={{ borderTop: '1px solid #eee', overflowX: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ background: '#f0f0f0' }}>
+                      <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 700 }}>Ear Tag</th>
+                      <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 700 }}>Status</th>
+                      <th style={{ padding: '8px 12px', textAlign: 'left', fontWeight: 700 }}>Found at</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {inv.animals.map((a, i) => (
+                      <tr key={a.ear_tag} style={{ background: i % 2 === 0 ? (a.found ? '#F1F8E9' : '#FFEBEE') : (a.found ? '#E8F5E9' : '#FFCDD2') }}>
+                        <td style={{ padding: '7px 12px', fontFamily: 'monospace', fontWeight: 600 }}>{a.ear_tag}</td>
+                        <td style={{ padding: '7px 12px', color: a.found ? '#2E7D32' : '#C62828', fontWeight: 700 }}>
+                          {a.found ? '✓ Found' : '✗ Not found'}
+                        </td>
+                        <td style={{ padding: '7px 12px', color: '#555' }}>{a.found_at ? fmtDt(a.found_at) : '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }

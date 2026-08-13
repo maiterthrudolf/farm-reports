@@ -874,6 +874,7 @@ function AddressesPanel() {
   const toggleBtnStyle: React.CSSProperties = { fontSize: 11, fontWeight: 600, color: freeMode ? '#1565C0' : '#6B7280', background: freeMode ? '#E3F2FD' : '#F3F4F6', border: '1px solid ' + (freeMode ? '#90CAF9' : '#D1D5DB'), borderRadius: 4, padding: '2px 8px', cursor: 'pointer', marginLeft: 8, verticalAlign: 'middle' };
 
   return (
+    <div style={{ flex: 1, overflowY: 'auto', height: '100%' }}>
     <div style={{ padding: '28px 32px', maxWidth: 780, margin: '0 auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
         <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: '#1a1a1a' }}>📍 Addresses</h2>
@@ -960,6 +961,7 @@ function AddressesPanel() {
           ))}
         </div>
       )}
+    </div>
     </div>
   );
 }

@@ -782,6 +782,25 @@ function Sidebar({ activeId, onSelect, mode, onModeChange, tags, isAdmin, onLogo
 
 // ─── Addresses Panel ─────────────────────────────────────────────────────────
 
+function CopyBtn({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = () => {
+    navigator.clipboard.writeText(text).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  };
+  return (
+    <button
+      onClick={copy}
+      title="Copy to clipboard"
+      style={{ background: copied ? '#E8F5E9' : '#F3F4F6', color: copied ? '#2E7D32' : '#374151', border: '1px solid ' + (copied ? '#A5D6A7' : '#D1D5DB'), borderRadius: 6, padding: '7px 12px', fontSize: 13, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' as const }}
+    >
+      {copied ? '✓ Copied' : '📋'}
+    </button>
+  );
+}
+
 const emptyAddr = { name: '', street: '', house_number: '', postal_code: '', city: '', country: '' };
 
 function addrLine(a: ReportAddress): string {
@@ -791,6 +810,11 @@ function addrLine(a: ReportAddress): string {
   if (a.city) parts.push(a.city);
   if (a.country) parts.push(a.country);
   return parts.join(', ');
+}
+
+// Exactly the same query string the mobile app sends to Google Maps
+function mapsQuery(a: ReportAddress): string {
+  return `${a.street} ${a.house_number}, ${a.postal_code} ${a.city}, ${a.country}`.replace(/\s+,/g, ',').replace(/^,\s*|,\s*$/g, '').trim();
 }
 
 function AddressesPanel() {
@@ -928,6 +952,7 @@ function AddressesPanel() {
                 <div style={{ fontWeight: 700, fontSize: 15, color: '#111827' }}>{a.name}</div>
                 <div style={{ fontSize: 13, color: '#6B7280', marginTop: 2 }}>{addrLine(a)}</div>
               </div>
+              <CopyBtn text={mapsQuery(a)} />
               <button onClick={() => startEdit(a)} style={{ background: '#1565C0', color: '#fff', border: 'none', borderRadius: 6, padding: '7px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Edit</button>
               <button onClick={() => del(a.id)} style={{ background: '#C62828', color: '#fff', border: 'none', borderRadius: 6, padding: '7px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Delete</button>
             </div>

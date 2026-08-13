@@ -16,6 +16,7 @@ export type SimpleRow = Record<string, unknown>;
 export type PivotResult = { columns: string[]; rows: SimpleRow[] };
 export interface FarmTag { id: number; name: string; created_at?: string; }
 export interface AnimalTag { id: number; name: string; value: boolean; }
+export interface ReportAddress { id: number; name: string; street: string; house_number: string; postal_code: string; city: string; country: string; }
 
 // Backend paths (from routers/reports.py):
 //   /animals               → all animals
@@ -258,4 +259,17 @@ export const api = {
       throw new Error(msg);
     }
   },
+
+  // ── Addresses ──────────────────────────────────────────────────────────────
+  listAddresses: () =>
+    fetch(`${BASE}/api/addresses`).then(r => r.json()) as Promise<ReportAddress[]>,
+
+  createAddress: (data: Omit<ReportAddress, 'id'>) =>
+    fetch(`${BASE}/api/addresses`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }).then(r => r.json()) as Promise<ReportAddress>,
+
+  updateAddress: (id: number, data: Omit<ReportAddress, 'id'>) =>
+    fetch(`${BASE}/api/addresses/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) }).then(r => r.json()) as Promise<ReportAddress>,
+
+  deleteAddress: (id: number) =>
+    fetch(`${BASE}/api/addresses/${id}`, { method: 'DELETE' }).then(r => r.json()),
 };

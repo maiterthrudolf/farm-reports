@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import ReactDOM from 'react-dom';
 import ExcelJS from 'exceljs';
-import { api, SimpleRow, PivotResult, FarmTag, AnimalTag } from './api';
+import { api, SimpleRow, PivotResult, FarmTag, AnimalTag, ReportAddress } from './api';
 
 // ─── Report catalogue ──────────────────────────────────────────────────────────
 
@@ -386,26 +386,30 @@ function applyColConfig(cols: string[], cfg: ColConfig | undefined, defaultHidde
 
 // ─── Password Gate ────────────────────────────────────────────────────────────
 
-const PW = '9824';
+type UserRole = 'standard' | 'admin';
 const PW_KEY = 'farm-auth';
 
-function PasswordGate({ children }: { children: React.ReactNode }) {
-  const [auth, setAuth] = useState(() => localStorage.getItem(PW_KEY) === PW);
+function storedRole(): UserRole | null {
+  const v = localStorage.getItem(PW_KEY);
+  if (v === '9824') return 'standard';
+  if (v === '9999') return 'admin';
+  return null;
+}
+
+function PasswordGate({ onSuccess }: { onSuccess: (role: UserRole) => void }) {
   const [input, setInput] = useState('');
   const [shake, setShake] = useState(false);
 
   const submit = () => {
-    if (input === PW) {
-      localStorage.setItem(PW_KEY, PW);
-      setAuth(true);
+    if (input === '9824' || input === '9999') {
+      localStorage.setItem(PW_KEY, input);
+      onSuccess(input === '9999' ? 'admin' : 'standard');
     } else {
       setShake(true);
       setInput('');
       setTimeout(() => setShake(false), 600);
     }
   };
-
-  if (auth) return <>{children}</>;
 
   return (
     <div style={{ minHeight: '100vh', background: '#1A2B4A', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -443,7 +447,7 @@ function PasswordGate({ children }: { children: React.ReactNode }) {
 
 // ─── App ──────────────────────────────────────────────────────────────────────
 
-function AppInner() {
+function AppInner({ isAdmin }: { isAdmin: boolean }) {
   const [mode, setMode]       = useState<'animals' | 'feed'>('animals');
   const [activeId, setActiveId] = useState<string | null>('overview');
   const [columns, setColumns] = useState<string[]>([]);
@@ -567,10 +571,12 @@ function AppInner() {
 
   return (
     <div style={layout.root}>
-      <Sidebar activeId={activeId} onSelect={selectReport} mode={mode} onModeChange={m => { setMode(m); setActiveId(null); setColumns([]); setRows([]); setError(null); setParamsReady(false); }} tags={tags} />
+      <Sidebar activeId={activeId} onSelect={selectReport} mode={mode} onModeChange={m => { setMode(m); setActiveId(null); setColumns([]); setRows([]); setError(null); setParamsReady(false); }} tags={tags} isAdmin={isAdmin} />
       <div style={layout.main}>
         {activeId === 'tag_manager' ? (
           <TagManagerPanel tags={tags} onTagsChanged={refreshTags} />
+        ) : activeId === 'addresses' ? (
+          <AddressesPanel />
         ) : activeDef?.kind === 'overview' ? (
           <OverviewPanel data={overviewData} loading={loading} error={error} onRefresh={runReport} />
         ) : activeDef?.kind === 'inventory' ? (
@@ -678,12 +684,13 @@ function CronStatusBar() {
   );
 }
 
-function Sidebar({ activeId, onSelect, mode, onModeChange, tags }: {
+function Sidebar({ activeId, onSelect, mode, onModeChange, tags, isAdmin }: {
   activeId: string | null;
   onSelect: (id: string) => void;
   mode: 'animals' | 'feed';
   onModeChange: (m: 'animals' | 'feed') => void;
   tags: FarmTag[];
+  isAdmin: boolean;
 }) {
   const groups = mode === 'animals' ? ANIMAL_GROUPS : FEED_GROUPS;
   return (
@@ -747,8 +754,145 @@ function Sidebar({ activeId, onSelect, mode, onModeChange, tags }: {
             ))}
           </div>
         )}
+        {isAdmin && (
+          <div>
+            <div style={sb.groupLabel}>ADMIN</div>
+            <button
+              style={{ ...sb.item, ...(activeId === 'addresses' ? sb.itemActive : {}) }}
+              onClick={() => onSelect('addresses')}
+            >
+              <span style={sb.itemIcon}>📍</span>
+              <span style={sb.itemTitle}>Addresses</span>
+            </button>
+          </div>
+        )}
       </div>
       <CronStatusBar />
+    </div>
+  );
+}
+
+// ─── Addresses Panel ─────────────────────────────────────────────────────────
+
+const emptyAddr = { name: '', street: '', house_number: '', postal_code: '', city: '', country: '' };
+
+function AddressesPanel() {
+  const [addresses, setAddresses] = useState<ReportAddress[]>([]);
+  const [loading, setLoading]     = useState(true);
+  const [editing, setEditing]     = useState<ReportAddress | null>(null);
+  const [form, setForm]           = useState(emptyAddr);
+  const [saving, setSaving]       = useState(false);
+  const [error, setError]         = useState<string | null>(null);
+
+  const load = useCallback(() => {
+    setLoading(true);
+    api.listAddresses().then(setAddresses).catch(e => setError(e.message)).finally(() => setLoading(false));
+  }, []);
+  useEffect(() => { load(); }, [load]);
+
+  const startNew  = () => { setEditing({ id: 0, ...emptyAddr }); setForm(emptyAddr); };
+  const startEdit = (a: ReportAddress) => { setEditing(a); setForm({ name: a.name, street: a.street, house_number: a.house_number, postal_code: a.postal_code, city: a.city, country: a.country }); };
+  const cancel    = () => { setEditing(null); setForm(emptyAddr); };
+
+  const save = async () => {
+    if (!form.name || !form.street || !form.city) { setError('Name, Strasse und Ort sind Pflichtfelder'); return; }
+    setSaving(true);
+    try {
+      if (editing!.id === 0) {
+        await api.createAddress(form);
+      } else {
+        await api.updateAddress(editing!.id, form);
+      }
+      setEditing(null); setForm(emptyAddr); load();
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const del = async (id: number) => {
+    if (!window.confirm('Adresse löschen?')) return;
+    try { await api.deleteAddress(id); load(); } catch (e: any) { setError(e.message); }
+  };
+
+  const inp = (field: keyof typeof emptyAddr) => (e: React.ChangeEvent<HTMLInputElement>) =>
+    setForm(f => ({ ...f, [field]: e.target.value }));
+
+  const fieldStyle: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '8px 12px', border: '1.5px solid #D1D5DB', borderRadius: 6, fontSize: 14, outline: 'none', marginBottom: 8 };
+  const labelStyle: React.CSSProperties = { fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 2 };
+
+  return (
+    <div style={{ padding: '28px 32px', maxWidth: 780, margin: '0 auto' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+        <h2 style={{ margin: 0, fontSize: 22, fontWeight: 800, color: '#1a1a1a' }}>📍 Addresses</h2>
+        {!editing && (
+          <button onClick={startNew} style={{ background: '#2E7D32', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 20px', fontSize: 14, fontWeight: 700, cursor: 'pointer' }}>
+            + New Address
+          </button>
+        )}
+      </div>
+
+      {error && <div style={{ background: '#FFEBEE', color: '#C62828', padding: '10px 14px', borderRadius: 8, marginBottom: 16, fontSize: 14 }}>{error} <span style={{ cursor: 'pointer', marginLeft: 8 }} onClick={() => setError(null)}>✕</span></div>}
+
+      {editing && (
+        <div style={{ background: '#F8F9FA', border: '1.5px solid #E5E7EB', borderRadius: 12, padding: 24, marginBottom: 24 }}>
+          <h3 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 700, color: '#1a1a1a' }}>{editing.id === 0 ? 'New Address' : 'Edit Address'}</h3>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={labelStyle}>Name *</label>
+              <input style={fieldStyle} value={form.name} onChange={inp('name')} placeholder="e.g. Rudi Home Germany" />
+            </div>
+            <div>
+              <label style={labelStyle}>Street *</label>
+              <input style={fieldStyle} value={form.street} onChange={inp('street')} placeholder="Hauptstraße" />
+            </div>
+            <div>
+              <label style={labelStyle}>House Number</label>
+              <input style={fieldStyle} value={form.house_number} onChange={inp('house_number')} placeholder="12A" />
+            </div>
+            <div>
+              <label style={labelStyle}>Postal Code</label>
+              <input style={fieldStyle} value={form.postal_code} onChange={inp('postal_code')} placeholder="80333" />
+            </div>
+            <div>
+              <label style={labelStyle}>City *</label>
+              <input style={fieldStyle} value={form.city} onChange={inp('city')} placeholder="München" />
+            </div>
+            <div style={{ gridColumn: '1 / -1' }}>
+              <label style={labelStyle}>Country</label>
+              <input style={fieldStyle} value={form.country} onChange={inp('country')} placeholder="Germany" />
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
+            <button onClick={save} disabled={saving} style={{ background: '#2E7D32', color: '#fff', border: 'none', borderRadius: 8, padding: '10px 24px', fontSize: 14, fontWeight: 700, cursor: 'pointer', opacity: saving ? 0.6 : 1 }}>
+              {saving ? 'Saving…' : 'Save'}
+            </button>
+            <button onClick={cancel} style={{ background: '#fff', color: '#374151', border: '1.5px solid #D1D5DB', borderRadius: 8, padding: '10px 20px', fontSize: 14, fontWeight: 600, cursor: 'pointer' }}>
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+
+      {loading ? (
+        <div style={{ color: '#6B7280', padding: 24 }}>Loading…</div>
+      ) : addresses.length === 0 ? (
+        <div style={{ color: '#6B7280', fontStyle: 'italic', padding: 24 }}>No addresses yet.</div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {addresses.map(a => (
+            <div key={a.id} style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: 10, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 16 }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700, fontSize: 15, color: '#111827' }}>{a.name}</div>
+                <div style={{ fontSize: 13, color: '#6B7280', marginTop: 2 }}>{a.street} {a.house_number}, {a.postal_code} {a.city}{a.country ? `, ${a.country}` : ''}</div>
+              </div>
+              <button onClick={() => startEdit(a)} style={{ background: '#1565C0', color: '#fff', border: 'none', borderRadius: 6, padding: '7px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Edit</button>
+              <button onClick={() => del(a.id)} style={{ background: '#C62828', color: '#fff', border: 'none', borderRadius: 6, padding: '7px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Delete</button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -2139,5 +2283,7 @@ const ov = {
 };
 
 export default function App() {
-  return <PasswordGate><AppInner /></PasswordGate>;
+  const [role, setRole] = useState<UserRole | null>(() => storedRole());
+  if (!role) return <PasswordGate onSuccess={r => setRole(r)} />;
+  return <AppInner isAdmin={role === 'admin'} />;
 }

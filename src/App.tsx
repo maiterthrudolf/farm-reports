@@ -784,11 +784,21 @@ function Sidebar({ activeId, onSelect, mode, onModeChange, tags, isAdmin, onLogo
 
 const emptyAddr = { name: '', street: '', house_number: '', postal_code: '', city: '', country: '' };
 
+function addrLine(a: ReportAddress): string {
+  const parts: string[] = [];
+  if (a.street) parts.push(a.house_number ? `${a.street} ${a.house_number}` : a.street);
+  if (a.postal_code) parts.push(a.postal_code);
+  if (a.city) parts.push(a.city);
+  if (a.country) parts.push(a.country);
+  return parts.join(', ');
+}
+
 function AddressesPanel() {
   const [addresses, setAddresses] = useState<ReportAddress[]>([]);
   const [loading, setLoading]     = useState(true);
   const [editing, setEditing]     = useState<ReportAddress | null>(null);
   const [form, setForm]           = useState(emptyAddr);
+  const [freeMode, setFreeMode]   = useState(false);
   const [saving, setSaving]       = useState(false);
   const [error, setError]         = useState<string | null>(null);
 
@@ -798,12 +808,19 @@ function AddressesPanel() {
   }, []);
   useEffect(() => { load(); }, [load]);
 
-  const startNew  = () => { setEditing({ id: 0, ...emptyAddr }); setForm(emptyAddr); };
-  const startEdit = (a: ReportAddress) => { setEditing(a); setForm({ name: a.name, street: a.street, house_number: a.house_number, postal_code: a.postal_code, city: a.city, country: a.country }); };
-  const cancel    = () => { setEditing(null); setForm(emptyAddr); };
+  const startNew  = () => { setEditing({ id: 0, ...emptyAddr }); setForm(emptyAddr); setFreeMode(false); };
+  const startEdit = (a: ReportAddress) => { setEditing(a); setForm({ name: a.name, street: a.street, house_number: a.house_number, postal_code: a.postal_code, city: a.city, country: a.country }); setFreeMode(false); };
+  const cancel    = () => { setEditing(null); setForm(emptyAddr); setFreeMode(false); };
+
+  const toggleFreeMode = () => {
+    if (!freeMode) {
+      const merged = [form.street, form.house_number].filter(Boolean).join(' ');
+      setForm(f => ({ ...f, street: merged, house_number: '' }));
+    }
+    setFreeMode(m => !m);
+  };
 
   const save = async () => {
-    if (!form.name || !form.street || !form.city) { setError('Name, Strasse und Ort sind Pflichtfelder'); return; }
     setSaving(true);
     try {
       if (editing!.id === 0) {
@@ -829,6 +846,7 @@ function AddressesPanel() {
 
   const fieldStyle: React.CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '8px 12px', border: '1.5px solid #D1D5DB', borderRadius: 6, fontSize: 14, outline: 'none', marginBottom: 8 };
   const labelStyle: React.CSSProperties = { fontSize: 12, fontWeight: 600, color: '#374151', display: 'block', marginBottom: 2 };
+  const toggleBtnStyle: React.CSSProperties = { fontSize: 11, fontWeight: 600, color: freeMode ? '#1565C0' : '#6B7280', background: freeMode ? '#E3F2FD' : '#F3F4F6', border: '1px solid ' + (freeMode ? '#90CAF9' : '#D1D5DB'), borderRadius: 4, padding: '2px 8px', cursor: 'pointer', marginLeft: 8, verticalAlign: 'middle' };
 
   return (
     <div style={{ padding: '28px 32px', maxWidth: 780, margin: '0 auto' }}>
@@ -848,23 +866,38 @@ function AddressesPanel() {
           <h3 style={{ margin: '0 0 16px', fontSize: 16, fontWeight: 700, color: '#1a1a1a' }}>{editing.id === 0 ? 'New Address' : 'Edit Address'}</h3>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
             <div style={{ gridColumn: '1 / -1' }}>
-              <label style={labelStyle}>Name *</label>
-              <input style={fieldStyle} value={form.name} onChange={inp('name')} placeholder="e.g. Rudi Home Germany" />
+              <label style={labelStyle}>Name</label>
+              <input style={fieldStyle} value={form.name} onChange={inp('name')} placeholder="e.g. Terminal 3 Frankfurt" />
             </div>
-            <div>
-              <label style={labelStyle}>Street *</label>
-              <input style={fieldStyle} value={form.street} onChange={inp('street')} placeholder="Hauptstraße" />
-            </div>
-            <div>
-              <label style={labelStyle}>House Number</label>
-              <input style={fieldStyle} value={form.house_number} onChange={inp('house_number')} placeholder="12A" />
-            </div>
+            {freeMode ? (
+              <div style={{ gridColumn: '1 / -1' }}>
+                <label style={labelStyle}>
+                  Street / Location
+                  <button style={toggleBtnStyle} onClick={toggleFreeMode}>structured ↩</button>
+                </label>
+                <input style={fieldStyle} value={form.street} onChange={inp('street')} placeholder="Terminal 3, Flughafen Frankfurt" />
+              </div>
+            ) : (
+              <>
+                <div>
+                  <label style={labelStyle}>
+                    Street
+                    <button style={toggleBtnStyle} onClick={toggleFreeMode}>free text ↗</button>
+                  </label>
+                  <input style={fieldStyle} value={form.street} onChange={inp('street')} placeholder="Hauptstraße" />
+                </div>
+                <div>
+                  <label style={labelStyle}>House Number</label>
+                  <input style={fieldStyle} value={form.house_number} onChange={inp('house_number')} placeholder="12A" />
+                </div>
+              </>
+            )}
             <div>
               <label style={labelStyle}>Postal Code</label>
               <input style={fieldStyle} value={form.postal_code} onChange={inp('postal_code')} placeholder="80333" />
             </div>
             <div>
-              <label style={labelStyle}>City *</label>
+              <label style={labelStyle}>City</label>
               <input style={fieldStyle} value={form.city} onChange={inp('city')} placeholder="München" />
             </div>
             <div style={{ gridColumn: '1 / -1' }}>
@@ -893,7 +926,7 @@ function AddressesPanel() {
             <div key={a.id} style={{ background: '#fff', border: '1px solid #E5E7EB', borderRadius: 10, padding: '14px 18px', display: 'flex', alignItems: 'center', gap: 16 }}>
               <div style={{ flex: 1 }}>
                 <div style={{ fontWeight: 700, fontSize: 15, color: '#111827' }}>{a.name}</div>
-                <div style={{ fontSize: 13, color: '#6B7280', marginTop: 2 }}>{a.street} {a.house_number}, {a.postal_code} {a.city}{a.country ? `, ${a.country}` : ''}</div>
+                <div style={{ fontSize: 13, color: '#6B7280', marginTop: 2 }}>{addrLine(a)}</div>
               </div>
               <button onClick={() => startEdit(a)} style={{ background: '#1565C0', color: '#fff', border: 'none', borderRadius: 6, padding: '7px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Edit</button>
               <button onClick={() => del(a.id)} style={{ background: '#C62828', color: '#fff', border: 'none', borderRadius: 6, padding: '7px 14px', fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Delete</button>

@@ -447,7 +447,7 @@ function PasswordGate({ onSuccess }: { onSuccess: (role: UserRole) => void }) {
 
 // ─── App ──────────────────────────────────────────────────────────────────────
 
-function AppInner({ isAdmin }: { isAdmin: boolean }) {
+function AppInner({ isAdmin, onLogout }: { isAdmin: boolean; onLogout: () => void }) {
   const [mode, setMode]       = useState<'animals' | 'feed'>('animals');
   const [activeId, setActiveId] = useState<string | null>('overview');
   const [columns, setColumns] = useState<string[]>([]);
@@ -571,7 +571,7 @@ function AppInner({ isAdmin }: { isAdmin: boolean }) {
 
   return (
     <div style={layout.root}>
-      <Sidebar activeId={activeId} onSelect={selectReport} mode={mode} onModeChange={m => { setMode(m); setActiveId(null); setColumns([]); setRows([]); setError(null); setParamsReady(false); }} tags={tags} isAdmin={isAdmin} />
+      <Sidebar activeId={activeId} onSelect={selectReport} mode={mode} onModeChange={m => { setMode(m); setActiveId(null); setColumns([]); setRows([]); setError(null); setParamsReady(false); }} tags={tags} isAdmin={isAdmin} onLogout={onLogout} />
       <div style={layout.main}>
         {activeId === 'tag_manager' ? (
           <TagManagerPanel tags={tags} onTagsChanged={refreshTags} />
@@ -684,13 +684,14 @@ function CronStatusBar() {
   );
 }
 
-function Sidebar({ activeId, onSelect, mode, onModeChange, tags, isAdmin }: {
+function Sidebar({ activeId, onSelect, mode, onModeChange, tags, isAdmin, onLogout }: {
   activeId: string | null;
   onSelect: (id: string) => void;
   mode: 'animals' | 'feed';
   onModeChange: (m: 'animals' | 'feed') => void;
   tags: FarmTag[];
   isAdmin: boolean;
+  onLogout: () => void;
 }) {
   const groups = mode === 'animals' ? ANIMAL_GROUPS : FEED_GROUPS;
   return (
@@ -712,6 +713,13 @@ function Sidebar({ activeId, onSelect, mode, onModeChange, tags, isAdmin }: {
           🌾
         </button>
         <span style={sb.brandText}>{mode === 'animals' ? 'Animals' : 'Feed'}</span>
+        <button
+          style={sb.logoutBtn}
+          onClick={onLogout}
+          title={isAdmin ? 'Admin — Logout' : 'Logout'}
+        >
+          {isAdmin ? '🔑' : '🔓'}
+        </button>
       </div>
       <div style={sb.scroll}>
         {groups.map(g => {
@@ -2069,7 +2077,8 @@ const sb = {
   tabs:      { display: 'flex', alignItems: 'center', gap: 6, padding: '12px 14px', borderBottom: '1px solid rgba(255,255,255,0.08)', flexShrink: 0 } as React.CSSProperties,
   tab:       { width: 38, height: 38, borderRadius: 8, border: '2px solid rgba(255,255,255,0.15)', background: 'rgba(255,255,255,0.06)', fontSize: 20, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.15s' } as React.CSSProperties,
   tabActive: { background: 'rgba(255,255,255,0.22)', borderColor: 'rgba(255,255,255,0.5)' } as React.CSSProperties,
-  brandText: { fontSize: 14, fontWeight: '700', color: '#FFFFFF', letterSpacing: 0.2, marginLeft: 4 } as React.CSSProperties,
+  brandText: { fontSize: 14, fontWeight: '700', color: '#FFFFFF', letterSpacing: 0.2, marginLeft: 4, flex: 1 } as React.CSSProperties,
+  logoutBtn: { marginLeft: 'auto', width: 30, height: 30, borderRadius: 6, border: '1px solid rgba(255,255,255,0.2)', background: 'rgba(255,255,255,0.08)', fontSize: 16, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 } as React.CSSProperties,
   scroll:    { flex: 1, overflowY: 'auto' as const, padding: '8px 0 24px' },
   groupLabel:{ fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.35)', letterSpacing: 1.2, padding: '14px 16px 4px', textTransform: 'uppercase' as const },
   item:      { display: 'flex', alignItems: 'center', gap: 9, width: '100%', padding: '8px 16px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left' as const, borderRadius: 0, color: 'rgba(255,255,255,0.75)', fontSize: 13, fontWeight: '500', transition: 'background 0.1s' },
@@ -2284,6 +2293,7 @@ const ov = {
 
 export default function App() {
   const [role, setRole] = useState<UserRole | null>(() => storedRole());
+  const logout = () => { localStorage.removeItem(PW_KEY); setRole(null); };
   if (!role) return <PasswordGate onSuccess={r => setRole(r)} />;
-  return <AppInner isAdmin={role === 'admin'} />;
+  return <AppInner isAdmin={role === 'admin'} onLogout={logout} />;
 }

@@ -814,7 +814,8 @@ function addrLine(a: ReportAddress): string {
 
 // Exactly the same query string the mobile app sends to Google Maps
 function mapsQuery(a: ReportAddress): string {
-  return `${a.street} ${a.house_number}, ${a.postal_code} ${a.city}, ${a.country}`.replace(/\s+,/g, ',').replace(/^,\s*|,\s*$/g, '').trim();
+  const street = [a.street, a.house_number].filter(Boolean).join(' ');
+  return [street, a.postal_code, a.city, a.country].filter(Boolean).join(', ');
 }
 
 function AddressesPanel() {

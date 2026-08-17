@@ -1430,7 +1430,7 @@ function InventoryPanel() {
                     onClick={() => setExpanded(null)}
                     style={{ background: 'none', border: 'none', color: '#1565C0', fontSize: 13, fontWeight: 700, cursor: 'pointer', padding: '4px 0', display: 'flex', alignItems: 'center', gap: 4 }}
                   >
-                    ← Zurück zur Übersicht
+                    ← Back to overview
                   </button>
                 </div>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>

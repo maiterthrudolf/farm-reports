@@ -1419,6 +1419,24 @@ function InventoryPanel() {
                 <span style={{ color: '#999' }}>/</span>
                 <span style={{ color: notFound > 0 ? '#C62828' : '#999', fontWeight: 700, fontSize: 14 }}>✗ {notFound}</span>
                 <span style={{ color: '#555', fontSize: 13 }}>Total: {inv.total}</span>
+                <button
+                  onClick={e => {
+                    e.stopPropagation();
+                    const rows = inv.animals.map(a => ({
+                      ear_tag: a.ear_tag,
+                      status: a.found ? 'Found' : 'Not found',
+                      found_at: a.found_at ? fmtDt(a.found_at) : '—',
+                    }));
+                    void exportXLSX(
+                      ['ear_tag', 'status', 'found_at'],
+                      rows,
+                      `Inventory_${inv.group_name}_${inv.ended_at.slice(0, 10)}`
+                    );
+                  }}
+                  style={{ background: '#1565C0', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' as const }}
+                >
+                  ↓ Excel
+                </button>
                 <span style={{ color: '#aaa', fontSize: 16 }}>{isOpen ? '▲' : '▼'}</span>
               </div>
             </div>

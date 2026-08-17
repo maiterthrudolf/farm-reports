@@ -1391,6 +1391,7 @@ function InventoryPanel() {
   const fmtDt = (s: string | null) => s ? s.slice(0, 16).replace('T', ' ') : '—';
 
   return (
+    <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
     <div style={{ padding: '24px 32px', maxWidth: 860, margin: '0 auto' }}>
       <h2 style={{ margin: '0 0 20px', fontSize: 22, fontWeight: 800, color: '#1a1a1a' }}>Inventory Reports</h2>
 
@@ -1400,7 +1401,7 @@ function InventoryPanel() {
         <div style={{ color: '#666', padding: 24 }}>No completed inventories found.</div>
       )}
 
-      {inventories.map(inv => {
+      {inventories.map((inv) => {
         const notFound = inv.total - inv.found_count;
         const isOpen = expanded === inv.id;
         return (
@@ -1449,6 +1450,7 @@ function InventoryPanel() {
           </div>
         );
       })}
+    </div>
     </div>
   );
 }

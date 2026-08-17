@@ -1454,22 +1454,27 @@ function InventoryPanel() {
 }
 
 
-// DD.MM.YYYY ↔ YYYY-MM-DD, no browser locale dependency
+// Date picker: always shows DD.MM.YYYY, opens native browser calendar on click
 function DateInput({ value, onChange, style }: { value: string; onChange: (v: string) => void; style?: React.CSSProperties }) {
-  const toDisplay = (iso: string) => iso ? iso.split('-').reverse().join('.') : '';
-  const toIso = (dmy: string) => {
-    const m = dmy.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
-    return m ? `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}` : '';
-  };
-  const [local, setLocal] = React.useState(() => toDisplay(value));
-  React.useEffect(() => { setLocal(toDisplay(value)); }, [value]);
-  const handle = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value;
-    setLocal(raw);
-    const iso = toIso(raw);
-    if (iso) onChange(iso);
-  };
-  return <input style={style} type="text" value={local} onChange={handle} placeholder="DD.MM.YYYY" maxLength={10} />;
+  const ref = React.useRef<HTMLInputElement>(null);
+  const display = value ? value.split('-').reverse().join('.') : '';
+  return (
+    <div
+      onClick={() => ref.current?.showPicker?.()}
+      style={{ ...style, cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between', userSelect: 'none', position: 'relative' } as React.CSSProperties}
+    >
+      <span style={{ color: display ? 'inherit' : '#9CA3AF' }}>{display || 'DD.MM.YYYY'}</span>
+      <span style={{ fontSize: 16 }}>📅</span>
+      <input
+        ref={ref}
+        type="date"
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        style={{ position: 'absolute', opacity: 0, width: 0, height: 0, pointerEvents: 'none' }}
+        tabIndex={-1}
+      />
+    </div>
+  );
 }
 
 function AnimalEditPanel() {

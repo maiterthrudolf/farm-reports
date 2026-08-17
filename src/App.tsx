@@ -1454,6 +1454,24 @@ function InventoryPanel() {
 }
 
 
+// DD.MM.YYYY ↔ YYYY-MM-DD, no browser locale dependency
+function DateInput({ value, onChange, style }: { value: string; onChange: (v: string) => void; style?: React.CSSProperties }) {
+  const toDisplay = (iso: string) => iso ? iso.split('-').reverse().join('.') : '';
+  const toIso = (dmy: string) => {
+    const m = dmy.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/);
+    return m ? `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}` : '';
+  };
+  const [local, setLocal] = React.useState(() => toDisplay(value));
+  React.useEffect(() => { setLocal(toDisplay(value)); }, [value]);
+  const handle = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value;
+    setLocal(raw);
+    const iso = toIso(raw);
+    if (iso) onChange(iso);
+  };
+  return <input style={style} type="text" value={local} onChange={handle} placeholder="DD.MM.YYYY" maxLength={10} />;
+}
+
 function AnimalEditPanel() {
   const [last4,       setLast4]       = useState('');
   const [searching,   setSearching]   = useState(false);
@@ -1714,7 +1732,7 @@ function AnimalEditPanel() {
               </div>
               <div style={ae.field}><AeLabel text="Birth Date" />
                 {isEdit
-                  ? <input style={ae.inp} type="date" onClick={e => (e.currentTarget as HTMLInputElement).showPicker?.()} value={fBirth} onChange={e => setFBirth(e.target.value)} />
+                  ? <DateInput style={ae.inp} value={fBirth} onChange={setFBirth} />
                   : <Txt v={fBirth} date />}
               </div>
               <div style={ae.field}><AeLabel text="Color" />
@@ -1731,7 +1749,7 @@ function AnimalEditPanel() {
               {fStat === 'MORT' && (<>
                 <div style={ae.field}><AeLabel text="Death Date" />
                   {isEdit
-                    ? <input style={ae.inp} type="date" onClick={e => (e.currentTarget as HTMLInputElement).showPicker?.()} value={fDDat} onChange={e => setFDDat(e.target.value)} />
+                    ? <DateInput style={ae.inp} value={fDDat} onChange={setFDDat} />
                     : <Txt v={fDDat} date />}
                 </div>
                 <div style={ae.field}><AeLabel text="Death Reason" />
@@ -1746,9 +1764,8 @@ function AnimalEditPanel() {
                     } : undefined} />
                     {fDesp && (
                       isEdit
-                        ? <input style={{ ...ae.inp, maxWidth: 160 }} type="date"
-                            onClick={e => (e.currentTarget as HTMLInputElement).showPicker?.()}
-                            value={fDespDat} onChange={e => setFDespDat(e.target.value)} />
+                        ? <DateInput style={{ ...ae.inp, maxWidth: 160 }}
+                            value={fDespDat} onChange={setFDespDat} />
                         : <Txt v={fDespDat} date />
                     )}
                   </div>
@@ -1757,7 +1774,7 @@ function AnimalEditPanel() {
               {fStat === 'VANDUT' && (<>
                 <div style={ae.field}><AeLabel text="Sale Date" />
                   {isEdit
-                    ? <input style={ae.inp} type="date" onClick={e => (e.currentTarget as HTMLInputElement).showPicker?.()} value={fSDat} onChange={e => setFSDat(e.target.value)} />
+                    ? <DateInput style={ae.inp} value={fSDat} onChange={setFSDat} />
                     : <Txt v={fSDat} date />}
                 </div>
                 <div style={ae.field}><AeLabel text="Client" />

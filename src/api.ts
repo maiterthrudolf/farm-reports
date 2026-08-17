@@ -227,6 +227,11 @@ export const api = {
       animals: { ear_tag: string; found: boolean; found_at: string | null }[];
     }[]>,
 
+  deleteInventory: (id: number) =>
+    fetch(`${BASE}/api/groups/inventory/${id}`, { method: 'DELETE' }).then(r => {
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    }),
+
   animalSearch: (last4: string) =>
     getList(`${BASE}/api/cattle/search?last4=${last4}`),
 

@@ -1382,11 +1382,25 @@ function InventoryPanel() {
   const [error, setError] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<number | null>(null);
 
-  useEffect(() => {
+  const load = () => {
+    setLoading(true);
     api.inventoryReport()
       .then(data => { setInventories(data); setLoading(false); })
       .catch((e: Error) => { setError(e.message); setLoading(false); });
-  }, []);
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const handleDelete = async (id: number, groupName: string) => {
+    if (!window.confirm(`Delete inventory "${groupName}"? This cannot be undone.`)) return;
+    try {
+      await api.deleteInventory(id);
+      if (expanded === id) setExpanded(null);
+      load();
+    } catch (e: any) {
+      setError(e.message ?? 'Delete failed');
+    }
+  };
 
   const fmtDt = (s: string | null) => s ? s.slice(0, 16).replace('T', ' ') : '—';
 
@@ -1436,6 +1450,12 @@ function InventoryPanel() {
                   style={{ background: '#1565C0', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' as const }}
                 >
                   ↓ Excel
+                </button>
+                <button
+                  onClick={e => { e.stopPropagation(); void handleDelete(inv.id, inv.group_name); }}
+                  style={{ background: '#C62828', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' as const }}
+                >
+                  🗑 Delete
                 </button>
                 <span style={{ color: '#aaa', fontSize: 16 }}>{isOpen ? '▲' : '▼'}</span>
               </div>

@@ -1425,6 +1425,14 @@ function InventoryPanel() {
 
             {isOpen && (
               <div style={{ borderTop: '1px solid #eee', overflowX: 'auto' }}>
+                <div style={{ padding: '8px 12px', borderBottom: '1px solid #eee' }}>
+                  <button
+                    onClick={() => setExpanded(null)}
+                    style={{ background: 'none', border: 'none', color: '#1565C0', fontSize: 13, fontWeight: 700, cursor: 'pointer', padding: '4px 0', display: 'flex', alignItems: 'center', gap: 4 }}
+                  >
+                    ← Zurück zur Übersicht
+                  </button>
+                </div>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                   <thead>
                     <tr style={{ background: '#f0f0f0' }}>
